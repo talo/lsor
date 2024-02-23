@@ -6,6 +6,18 @@ use crate::sql::IntoSql;
 
 use super::sql::ToSql;
 
+pub trait AsOrderBy<E> {
+    fn as_order_by(&self) -> OrderBy<&E>;
+}
+
+pub trait ToOrderBy<E> {
+    fn to_order_by(&self) -> OrderBy<E>;
+}
+
+pub trait IntoOrderBy<E> {
+    fn into_order_by(self) -> OrderBy<E>;
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Enum, Eq, Hash, PartialEq, Serialize)]
 pub enum Order {
     Asc,
@@ -58,6 +70,36 @@ pub fn order_by<E>(expr: E, order: Order) -> OrderBy<E> {
 pub struct OrderBy<E> {
     pub expr: E,
     pub order: Order,
+}
+
+impl<E> AsOrderBy<E> for OrderBy<E> {
+    fn as_order_by(&self) -> OrderBy<&E> {
+        OrderBy {
+            expr: &self.expr,
+            order: self.order,
+        }
+    }
+}
+
+impl<E> ToOrderBy<E> for OrderBy<E>
+where
+    E: Copy,
+{
+    fn to_order_by(&self) -> OrderBy<E> {
+        Self {
+            expr: self.expr,
+            order: self.order,
+        }
+    }
+}
+
+impl<E> IntoOrderBy<E> for OrderBy<E> {
+    fn into_order_by(self) -> OrderBy<E> {
+        Self {
+            expr: self.expr,
+            order: self.order,
+        }
+    }
 }
 
 impl<'args, E> ToSql<'args> for OrderBy<E>
