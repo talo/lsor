@@ -7,7 +7,6 @@ use laser::{
     Cursor, DateTimeCursor, DateTimeFilter, Filterable, IntoOrderBy, Laser, Order, Pagination,
     StringFilter,
 };
-use laser_proc_macro::Filterable;
 use sqlx::{QueryBuilder, Row as _, Type};
 use uuid::Uuid;
 
@@ -111,7 +110,7 @@ fn select_page() {
             .with_metadata(MetadataFilter::created_at(DateTimeFilter::Eq(Utc::now())))
             .with_name(StringFilter::Eq("test".to_string())),
         )
-        .order_by(AccountOrderBy::Metadata(MetadataOrderBy::Id(Order::Desc)).into_order_by());
+        .order_by(AccountSortBy::Metadata(MetadataSortBy::Id(Order::Desc)).into_order_by());
     laser::select_page_items(
         &subquery,
         Pagination {

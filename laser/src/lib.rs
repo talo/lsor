@@ -6,6 +6,7 @@ pub mod literal;
 pub mod ord;
 pub mod page;
 pub mod select;
+pub mod sort;
 pub mod sql;
 pub mod table;
 pub mod upsert;
@@ -19,11 +20,12 @@ pub use literal::*;
 pub use ord::*;
 pub use page::*;
 pub use select::*;
+pub use sort::*;
 pub use table::*;
 pub use upsert::*;
 pub use value::*;
 
-pub use laser_proc_macro::Laser;
+pub use laser_proc_macro::{Filterable, Laser};
 
 #[cfg(test)]
 mod test {

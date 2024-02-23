@@ -140,8 +140,8 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         _ => panic!("Laser cannot be derived for non-structs"),
     };
 
-    let order_by_ident = concatenate_idents(&name, &Ident::new("OrderBy", Span::call_site()));
-    let order_by_variants = match &ast.data {
+    let sort_by_ident = concatenate_idents(&name, &Ident::new("SortBy", Span::call_site()));
+    let sort_by_variants = match &ast.data {
         // Struct
         Data::Struct(data) => match &data.fields {
             Fields::Named(named) => named.named.iter().map(|field| {
@@ -150,7 +150,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                 let variant_name = Ident::new(&snake_case_to_camel_case(&field_name.to_string()), Span::call_site());
                 let field_flatten = is_flatten(&field.attrs);
                 if field_flatten {
-                    quote! { #variant_name(<#field_ty as ::laser::ord::Orderable>::OrderBy) }
+                    quote! { #variant_name(<#field_ty as ::laser::sort::Sortable>::Sort) }
                 } else {
                     quote! { #variant_name(::laser::ord::Order) }
                 }
@@ -162,7 +162,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         },
         _ => panic!("Laser cannot be derived for non-structs"),
     };
-    let order_by_match_arms = match &ast.data {
+    let sort_by_match_arms = match &ast.data {
         // Struct
         Data::Struct(data) => match &data.fields {
             Fields::Named(named) => named.named.iter().map(|field| {
@@ -171,14 +171,14 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                 let field_flatten = is_flatten(&field.attrs);
                 if field_flatten {
                     quote! {                            
-                        #order_by_ident::#variant_name(order_by) => {
+                        #sort_by_ident::#variant_name(order_by) => {
                             use ::laser::ord::ToOrderBy;
                             order_by.to_order_by()
                         }
                     }
                 } else {
                     quote! {
-                        #order_by_ident::#variant_name(order) => ::laser::ord::OrderBy { expr: ::laser::column::col(stringify!(#field_name)), order: order.clone() },
+                        #sort_by_ident::#variant_name(order) => ::laser::ord::OrderBy { expr: ::laser::column::col(stringify!(#field_name)), order: order.clone() },
                     }
                 }
             }).collect::<Vec<_>>(),
@@ -400,30 +400,30 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
 
         #[derive(::std::clone::Clone, ::std::fmt::Debug, ::async_graphql::OneofObject)]
         #[graphql(rename_fields = "snake_case")]
-        pub enum #order_by_ident {
-            #(#order_by_variants,)*
+        pub enum #sort_by_ident {
+            #(#sort_by_variants,)*
         }
 
-        impl ::laser::ord::Orderable for #name {
-            type OrderBy = #order_by_ident;
+        impl ::laser::sort::Sortable for #name {
+            type Sort = #sort_by_ident;
         }
         
-        impl ::laser::ord::ToOrderBy for #order_by_ident {
+        impl ::laser::ord::ToOrderBy for #sort_by_ident {
             type E = ::laser::column::ColumnName<&'static str>;
         
             fn to_order_by(&self) -> ::laser::ord::OrderBy<Self::E> {
                 match self {
-                    #(#order_by_match_arms)*
+                    #(#sort_by_match_arms)*
                 }
             }
         }
         
-        impl ::laser::ord::IntoOrderBy for #order_by_ident {
+        impl ::laser::ord::IntoOrderBy for #sort_by_ident {
             type E = ::laser::column::ColumnName<&'static str>;
         
             fn into_order_by(self) -> ::laser::ord::OrderBy<Self::E> {
                 match self {
-                    #(#order_by_match_arms)*
+                    #(#sort_by_match_arms)*
                 }
             }
         }
