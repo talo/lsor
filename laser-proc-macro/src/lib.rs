@@ -258,11 +258,11 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                 let field_flatten = is_flatten(&field.attrs);
                 if !field_flatten {
                     quote! {
-                        pub fn #field_name(#field_name: <#field_ty as Filterable>::Filter) -> #fields_filter_ident {
+                        pub fn #field_name(#field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> #fields_filter_ident {
                             #fields_filter_ident::#field_name(#field_name)
                         }
                     
-                        pub fn #with_field_name(self, #field_name: <#field_ty as Filterable>::Filter) -> Self {
+                        pub fn #with_field_name(self, #field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> Self {
                             Self {
                                 fields: #fields_filter_ident {
                                     #field_name: Some(#field_name.into()),
@@ -274,11 +274,11 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                     }
                 } else {
                     quote! {
-                        pub fn #field_name(#field_name: <#field_ty as Filterable>::Filter) -> #fields_filter_ident {
+                        pub fn #field_name(#field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> #fields_filter_ident {
                             #fields_filter_ident::#field_name(#field_name)
                         }
                     
-                        pub fn #with_field_name(self, #field_name: <#field_ty as Filterable>::Filter) -> Self {
+                        pub fn #with_field_name(self, #field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> Self {
                             Self {
                                 fields: #fields_filter_ident {
                                     #field_name: #field_name.into(),
@@ -307,14 +307,14 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                 let field_flatten = is_flatten(&field.attrs);
                 if !field_flatten {
                     quote! {
-                        pub fn #field_name(#field_name: <#field_ty as Filterable>::Filter) -> Self {
+                        pub fn #field_name(#field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> Self {
                             Self {
                                 #field_name: Some(#field_name.into()),
                                 ..Self::default()
                             }
                         }
                     
-                        pub fn #with_field_name(self, #field_name: <#field_ty as Filterable>::Filter) -> Self {
+                        pub fn #with_field_name(self, #field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> Self {
                             Self {
                                 #field_name: Some(#field_name.into()),
                                 ..self
@@ -323,14 +323,14 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                     }
                 } else {
                     quote! {
-                        pub fn #field_name(#field_name: <#field_ty as Filterable>::Filter) -> Self {
+                        pub fn #field_name(#field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> Self {
                             Self {
                                 #field_name: #field_name.into(),
                                 ..Self::default()
                             }
                         }
                     
-                        pub fn #with_field_name(self, #field_name: <#field_ty as Filterable>::Filter) -> Self {
+                        pub fn #with_field_name(self, #field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> Self {
                             Self {
                                 #field_name: #field_name.into(),
                                 ..self
