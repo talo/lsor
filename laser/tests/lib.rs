@@ -4,7 +4,7 @@ use laser::{
     sql::{IntoSql, ToSql},
     table::Table,
     upsert::{upsert, upsert_into},
-    Cursor, DateTimeCursor, DateTimeFilter, Filterable, IntoOrderBy, Laser, Order, Pagination,
+    DateTimeCursor, DateTimeFilter, Filterable, IntoOrderBy, Laser, Order, Pagination,
     StringFilter,
 };
 use sqlx::{QueryBuilder, Row as _, Type};
@@ -35,6 +35,7 @@ pub struct Account {
     #[laser(flatten)]
     pub metadata: Metadata,
     pub name: String,
+    #[laser(skip_sort_by)]
     pub tier: AccountTier,
 }
 
@@ -100,6 +101,7 @@ fn select_page() {
     let last = 5;
 
     let mut qb = QueryBuilder::new("");
+    let sort_by = AccountSortBy::Metadata(MetadataSortBy::Id(Order::Desc));
     let subquery = Account::table()
         .select(laser::all())
         .filter_by(
@@ -110,15 +112,15 @@ fn select_page() {
             .with_metadata(MetadataFilter::created_at(DateTimeFilter::Eq(Utc::now())))
             .with_name(StringFilter::Eq("test".to_string())),
         )
-        .order_by(AccountSortBy::Metadata(MetadataSortBy::Id(Order::Desc)).into_order_by());
+        .order_by(sort_by.into_order_by());
     laser::select_page_items(
         &subquery,
         Pagination {
+            cursor: sort_by.cursor(),
             after,
             before,
             first,
             last,
-            cursor: Cursor::DateTime,
         },
     )
     .into_sql(&mut qb);
@@ -127,7 +129,7 @@ fn select_page() {
     let mut qb = QueryBuilder::new("");
     laser::select_page_info(
         &subquery,
-        Cursor::DateTime,
+        sort_by.cursor(),
         DateTimeCursor::encode(Utc::now()),
         DateTimeCursor::encode(Utc::now()),
     )

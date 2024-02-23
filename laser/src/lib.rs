@@ -1,6 +1,7 @@
 pub mod column;
 pub mod cond;
 pub mod cursor;
+pub mod exec;
 pub mod filter;
 pub mod literal;
 pub mod ord;
@@ -15,6 +16,7 @@ pub mod value;
 pub use column::*;
 pub use cond::*;
 pub use cursor::*;
+pub use exec::*;
 pub use filter::*;
 pub use literal::*;
 pub use ord::*;

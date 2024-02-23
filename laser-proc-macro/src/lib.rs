@@ -144,15 +144,19 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
     let sort_by_variants = match &ast.data {
         // Struct
         Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named.named.iter().map(|field| {
+            Fields::Named(named) => named.named.iter().filter_map(|field| {
                 let field_name = field.ident.clone().unwrap();
                 let field_ty = &field.ty;
-                let variant_name = Ident::new(&snake_case_to_camel_case(&field_name.to_string()), Span::call_site());
-                let field_flatten = is_flatten(&field.attrs);
-                if field_flatten {
-                    quote! { #variant_name(<#field_ty as ::laser::sort::Sortable>::Sort) }
+                if is_skip_sort_by(&field.attrs) {
+                    None
                 } else {
-                    quote! { #variant_name(::laser::ord::Order) }
+                    let variant_name = Ident::new(&snake_case_to_camel_case(&field_name.to_string()), Span::call_site());
+                    let field_flatten = is_flatten(&field.attrs);
+                    if field_flatten {
+                        Some(quote! { #variant_name(<#field_ty as ::laser::sort::Sortable>::Sort) })
+                    } else {
+                        Some(quote! { #variant_name(::laser::ord::Order) })
+                    }
                 }
             }),
             Fields::Unnamed(..) => {
@@ -165,20 +169,58 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
     let sort_by_match_arms = match &ast.data {
         // Struct
         Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named.named.iter().map(|field| {
+            Fields::Named(named) => named.named.iter().filter_map(|field| {
                 let field_name = field.ident.clone().unwrap();
-                let variant_name = Ident::new(&snake_case_to_camel_case(&field_name.to_string()), Span::call_site());
-                let field_flatten = is_flatten(&field.attrs);
-                if field_flatten {
-                    quote! {                            
-                        #sort_by_ident::#variant_name(order_by) => {
-                            use ::laser::ord::ToOrderBy;
-                            order_by.to_order_by()
-                        }
-                    }
+                if is_skip_sort_by(&field.attrs) {
+                    None
                 } else {
-                    quote! {
-                        #sort_by_ident::#variant_name(order) => ::laser::ord::OrderBy { expr: ::laser::column::col(stringify!(#field_name)), order: order.clone() },
+                    let variant_name = Ident::new(&snake_case_to_camel_case(&field_name.to_string()), Span::call_site());
+                    let field_flatten = is_flatten(&field.attrs);
+                    if field_flatten {
+                        Some(quote! {                            
+                            #sort_by_ident::#variant_name(sort_by) => {
+                                use ::laser::ord::ToOrderBy;
+                                sort_by.to_order_by()
+                            }
+                        })
+                    } else {
+                        Some(quote! {
+                            #sort_by_ident::#variant_name(order) => ::laser::ord::OrderBy { expr: ::laser::column::col(stringify!(#field_name)), order: order.clone() },
+                        })
+                    }
+                }
+            }).collect::<Vec<_>>(),
+            Fields::Unnamed(..) => {
+                panic!("Laser cannot be derived for structs with unnamed fields")
+            }
+            Fields::Unit => panic!("Laser cannot be derived for unit-structs"),
+        },
+        _ => panic!("Laser cannot be derived for non-structs"),
+    };
+    let sort_by_cursor_match_arms = match &ast.data {
+        // Struct
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(named) => named.named.iter().filter_map(|field| {
+                let field_name = field.ident.clone().unwrap();
+                let field_ty = &field.ty;
+                if is_skip_sort_by(&field.attrs) {
+                    None
+                } else {
+                    let variant_name = Ident::new(&snake_case_to_camel_case(&field_name.to_string()), Span::call_site());
+                    let field_flatten = is_flatten(&field.attrs);
+                    if field_flatten {
+                        Some(quote! {                            
+                            #sort_by_ident::#variant_name(sort_by) => {
+                                sort_by.cursor()
+                            }
+                        })
+                    } else {
+                        Some(quote! {                            
+                            #sort_by_ident::#variant_name(_) => {
+                                use ::laser::cursor::Iterable;
+                                <#field_ty as ::laser::cursor::Iterable>::cursor()
+                            }
+                        })
                     }
                 }
             }).collect::<Vec<_>>(),
@@ -353,9 +395,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         if let Some(table_name) = is_table(&ast.attrs) {
             quote! {
                 impl #impl_generics ::laser::table::Table for #name #ty_generics #where_clause {
-                    type D = &'static str;
-
-                    fn table() -> ::laser::table::TableName<Self::D> {
+                    fn table() -> ::laser::table::TableName {
                         ::laser::table::table(#table_name)
                     }
                 }
@@ -379,9 +419,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         }
 
         impl #impl_generics ::laser::column::Columns for #name #ty_generics #where_clause {
-            type D = &'static str;
-
-            fn columns() -> impl ::std::iter::Iterator<Item = (::laser::column::ColumnName<Self::D>, bool)> {
+            fn columns() -> impl ::std::iter::Iterator<Item = (::laser::column::ColumnName, bool)> {
                 #flattened_columns
                 .chain([
                     #(#columns,)*
@@ -398,10 +436,18 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
             }
         }
 
-        #[derive(::std::clone::Clone, ::std::fmt::Debug, ::async_graphql::OneofObject)]
+        #[derive(::std::clone::Clone, ::std::marker::Copy, ::std::fmt::Debug, ::async_graphql::OneofObject)]
         #[graphql(rename_fields = "snake_case")]
         pub enum #sort_by_ident {
             #(#sort_by_variants,)*
+        }
+
+        impl #sort_by_ident {
+            pub fn cursor(self) -> ::laser::cursor::Cursor {
+                match self {
+                    #(#sort_by_cursor_match_arms)*
+                }
+            }
         }
 
         impl ::laser::sort::Sortable for #name {
@@ -409,7 +455,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         }
         
         impl ::laser::ord::ToOrderBy for #sort_by_ident {
-            type E = ::laser::column::ColumnName<&'static str>;
+            type E = ::laser::column::ColumnName;
         
             fn to_order_by(&self) -> ::laser::ord::OrderBy<Self::E> {
                 match self {
@@ -419,7 +465,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         }
         
         impl ::laser::ord::IntoOrderBy for #sort_by_ident {
-            type E = ::laser::column::ColumnName<&'static str>;
+            type E = ::laser::column::ColumnName;
         
             fn into_order_by(self) -> ::laser::ord::OrderBy<Self::E> {
                 match self {
@@ -475,7 +521,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         }
 
         impl #all_filter_ident  {
-            fn into_sql(&self, needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
+            pub fn into_sql(&self, needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
                 if let Some(all) = &self.all {
                     if all.len() > 0 {
                         if needs_and {
@@ -505,7 +551,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         }
 
         impl #any_filter_ident {
-            fn into_sql(&self, needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
+            pub fn into_sql(&self, needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
                 if let Some(any) = &self.any {
                     if any.len() > 0 {
                         if needs_and {
@@ -551,7 +597,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         }
 
         impl #fields_filter_ident {
-            fn into_sql(&self, mut needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
+            pub fn into_sql(&self, mut needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
                 #(#filter_fields_impl)*
                 return needs_and;
             }
@@ -644,7 +690,7 @@ pub fn derive_filter(input: TokenStream) -> TokenStream {
         }
 
         impl #name_with_filter {
-            fn into_sql(&self, column_name: &'static str, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) {
+            pub fn into_sql(&self, column_name: &'static str, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) {
                 match self {
                     #(#match_arms)*
                 }
@@ -684,6 +730,29 @@ fn is_flatten(attrs: &Vec<Attribute>) -> bool {
             match &attr.meta {
                 Meta::List(meta_list) => {
                     if let Some("flatten") = meta_list
+                        .tokens
+                        .clone()
+                        .into_iter()
+                        .next()
+                        .map(|t| t.to_string())
+                        .as_deref()
+                    {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    return false;
+}
+
+fn is_skip_sort_by(attrs: &Vec<Attribute>) -> bool {
+    for attr in attrs {
+        if attr.path().is_ident("laser") {
+            match &attr.meta {
+                Meta::List(meta_list) => {
+                    if let Some("skip_sort_by") = meta_list
                         .tokens
                         .clone()
                         .into_iter()

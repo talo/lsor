@@ -129,6 +129,13 @@ impl<ExprList, FromItems> Select<ExprList, FromItems> {
             order_by: order_by.into(),
         }
     }
+
+    pub fn limit(self, limit: i32) -> Limited<Self> {
+        Limited {
+            selection: self,
+            limit,
+        }
+    }
 }
 
 impl<'args, E, FromItems> ToSql<'args> for Select<E, FromItems>
@@ -225,6 +232,13 @@ impl<S, C> Filtered<S, C> {
         Ordered {
             selection: self,
             order_by: order_by.into(),
+        }
+    }
+
+    pub fn limit(self, limit: i32) -> Limited<Self> {
+        Limited {
+            selection: self,
+            limit,
         }
     }
 }
@@ -391,7 +405,18 @@ where
 
 impl<S> IntoSql for Limited<S>
 where
-    for<'args> S: IntoSql,
+    S: IntoSql,
+{
+    fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
+        self.selection.into_sql(qb);
+        qb.push(" LIMIT ");
+        qb.push_bind(self.limit);
+    }
+}
+
+impl<S> IntoSql for &Limited<S>
+where
+    for<'args> &'args S: IntoSql,
 {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
         self.selection.into_sql(qb);

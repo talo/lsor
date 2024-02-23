@@ -1,50 +1,37 @@
-use std::fmt::Display;
-
 use sqlx::{Postgres, QueryBuilder};
 
 use crate::{
-    column::{Column, ColumnName},
+    column::ColumnName,
     select::Select,
     sql::{IntoSql, ToSql},
 };
 
 pub trait Table {
-    type D;
-
-    fn table() -> TableName<Self::D>;
+    fn table() -> TableName;
 }
 
 impl<T> Table for &T
 where
     T: Table,
 {
-    type D = T::D;
-
-    fn table() -> TableName<Self::D> {
+    fn table() -> TableName {
         T::table()
     }
 }
 
-pub fn table(name: &str) -> TableName<&str> {
+pub fn table(name: &'static str) -> TableName {
     TableName { name }
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct TableName<D> {
-    pub name: D,
+pub struct TableName {
+    pub name: &'static str,
 }
 
-impl<D> TableName<D> {
-    pub fn column<C>(self, name: C) -> TableColumnName<D, C> {
+impl TableName {
+    pub fn column(self, name: &'static str) -> TableColumnName {
         TableColumnName {
             table: self,
-            column: ColumnName { name },
-        }
-    }
-
-    pub fn to_column<C>(&self, name: C) -> TableColumnName<&D, C> {
-        TableColumnName {
-            table: TableName { name: &self.name },
             column: ColumnName { name },
         }
     }
@@ -57,52 +44,36 @@ impl<D> TableName<D> {
     }
 }
 
-impl<'args, D> ToSql<'args> for TableName<D>
-where
-    D: Display,
-{
+impl<'args> ToSql<'args> for TableName {
     fn to_sql(&'args self, qb: &mut QueryBuilder<'args, Postgres>) {
         qb.push(&self.name);
     }
 }
 
-impl<D> IntoSql for TableName<D>
-where
-    D: Display,
-{
+impl IntoSql for TableName {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
         qb.push(self.name);
     }
 }
 
-impl<'args, D> ToSql<'args> for &'args TableName<D>
-where
-    D: Display,
-{
+impl<'args> ToSql<'args> for &'args TableName {
     fn to_sql(&'args self, qb: &mut QueryBuilder<'args, Postgres>) {
         qb.push(&self.name);
     }
 }
 
-impl<D> IntoSql for &TableName<D>
-where
-    D: Copy + Display,
-{
+impl IntoSql for &TableName {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
         qb.push(self.name);
     }
 }
 
-pub struct TableColumnName<T, C> {
-    pub table: TableName<T>,
-    pub column: ColumnName<C>,
+pub struct TableColumnName {
+    pub table: TableName,
+    pub column: ColumnName,
 }
 
-impl<'args, T, C> ToSql<'args> for TableColumnName<T, C>
-where
-    T: Display,
-    C: Display,
-{
+impl<'args> ToSql<'args> for TableColumnName {
     fn to_sql(&'args self, qb: &mut QueryBuilder<'args, Postgres>) {
         qb.push("(");
         self.table.to_sql(qb);
@@ -112,11 +83,7 @@ where
     }
 }
 
-impl<T, C> IntoSql for TableColumnName<T, C>
-where
-    T: Display,
-    C: Display,
-{
+impl IntoSql for TableColumnName {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
         qb.push("(");
         self.table.into_sql(qb);
@@ -124,13 +91,6 @@ where
         self.column.into_sql(qb);
         qb.push(")");
     }
-}
-
-impl<'args, T, C> Column<'args> for TableColumnName<T, C>
-where
-    T: Display,
-    C: Display,
-{
 }
 
 #[cfg(test)]
@@ -147,12 +107,6 @@ mod tests {
 
     #[test]
     fn test_table_column() {
-        let tab = table("users");
-        let tab_col = tab.to_column("id");
-        let mut qb = QueryBuilder::default();
-        tab_col.to_sql(&mut qb);
-        assert_eq!(qb.into_sql(), "(users.id)");
-
         let tab_col = table("users").column("id");
         let mut qb = QueryBuilder::default();
         tab_col.to_sql(&mut qb);

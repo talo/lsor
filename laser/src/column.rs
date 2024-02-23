@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use sqlx::{Postgres, QueryBuilder};
 
 use crate::{
@@ -7,22 +5,20 @@ use crate::{
     Order, OrderBy,
 };
 
-pub trait Column<'args>: ToSql<'args> + IntoSql {}
-
-pub fn col(name: &str) -> ColumnName<&str> {
+pub fn col(name: &'static str) -> ColumnName {
     ColumnName { name }
 }
 
-pub fn column(name: &str) -> ColumnName<&str> {
+pub fn column(name: &'static str) -> ColumnName {
     ColumnName { name }
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ColumnName<D> {
-    pub name: D,
+pub struct ColumnName {
+    pub name: &'static str,
 }
 
-impl<D> ColumnName<D> {
+impl ColumnName {
     pub fn asc(self) -> OrderBy<Self> {
         OrderBy {
             expr: self,
@@ -52,50 +48,35 @@ impl<D> ColumnName<D> {
     }
 }
 
-impl<'args, D> ToSql<'args> for ColumnName<D>
-where
-    D: Display,
-{
+impl<'args> ToSql<'args> for ColumnName {
     fn to_sql(&'args self, qb: &mut QueryBuilder<'args, Postgres>) {
         qb.push(&self.name);
     }
 }
 
-impl<D> IntoSql for ColumnName<D>
-where
-    D: Display,
-{
+impl IntoSql for ColumnName {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
         qb.push(self.name);
     }
 }
 
-impl<D> IntoSql for &ColumnName<D>
-where
-    D: Copy + Display,
-{
+impl IntoSql for &ColumnName {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
         qb.push(self.name);
     }
 }
-
-impl<'args, D> Column<'args> for ColumnName<D> where D: Display {}
 
 /// This trait is implemented by types that represent a set of columns in an SQL
 /// table.
 pub trait Columns {
-    type D;
-
-    fn columns() -> impl Iterator<Item = (ColumnName<Self::D>, bool)>;
+    fn columns() -> impl Iterator<Item = (ColumnName, bool)>;
 }
 
 impl<T> Columns for &T
 where
     T: Columns,
 {
-    type D = T::D;
-
-    fn columns() -> impl Iterator<Item = (ColumnName<Self::D>, bool)> {
+    fn columns() -> impl Iterator<Item = (ColumnName, bool)> {
         T::columns()
     }
 }

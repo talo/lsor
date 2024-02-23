@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use sqlx::{Postgres, QueryBuilder};
 
 use crate::{
@@ -9,12 +7,12 @@ use crate::{
     value::ToValues,
 };
 
-pub struct Upsert<T, R> {
-    pub table_name: TableName<T>,
+pub struct Upsert<R> {
+    pub table_name: TableName,
     pub row: R,
 }
 
-pub fn upsert<R>(row: R) -> Upsert<R::D, R>
+pub fn upsert<R>(row: R) -> Upsert<R>
 where
     R: Table,
 {
@@ -24,15 +22,13 @@ where
     }
 }
 
-pub fn upsert_into<T, R>(table_name: TableName<T>, row: R) -> Upsert<T, R> {
+pub fn upsert_into<R>(table_name: TableName, row: R) -> Upsert<R> {
     Upsert { table_name, row }
 }
 
-impl<'args, T, R> ToSql<'args> for Upsert<T, R>
+impl<'args, R> ToSql<'args> for Upsert<R>
 where
-    T: Display,
     R: Columns + ToValues,
-    R::D: Display,
 {
     fn to_sql(&'args self, qb: &mut QueryBuilder<'args, Postgres>) {
         qb.push("INSERT INTO ");
