@@ -66,15 +66,16 @@ where
             column_name.into_sql(qb);
         }
         qb.push(") = (");
-        for (i, (_, column_value)) in R::columns()
-            .zip(self.row.to_values())
-            .filter(|((_, pk), _)| !*pk)
+        for (i, (j, _)) in R::columns()
+            .enumerate()
+            .filter(|(_, (_, pk))| !*pk)
             .enumerate()
         {
             if i > 0 {
                 qb.push(", ");
             }
-            column_value.to_sql(qb);
+            qb.push("$");
+            qb.push(j + 1);
         }
         qb.push(")");
     }

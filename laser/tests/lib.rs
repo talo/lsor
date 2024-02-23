@@ -12,7 +12,6 @@ use uuid::Uuid;
 pub struct Metadata {
     #[laser(pk)]
     pub id: Uuid,
-
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
@@ -52,7 +51,7 @@ fn test_upsert() {
         stmt.to_sql(&mut qb);
         assert_eq!(
             qb.sql(),
-            "INSERT INTO accounts (id, created_at, updated_at, deleted_at, tier) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET (created_at, updated_at, deleted_at, tier) = ($6, $7, $8, $9)"
+            "INSERT INTO accounts (id, created_at, updated_at, deleted_at, tier) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET (created_at, updated_at, deleted_at, tier) = ($2, $3, $4, $5)"
         );
     }
 
@@ -62,7 +61,7 @@ fn test_upsert() {
         stmt.to_sql(&mut qb);
         assert_eq!(
             qb.sql(),
-            "INSERT INTO accounts (id, created_at, updated_at, deleted_at, tier) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET (created_at, updated_at, deleted_at, tier) = ($6, $7, $8, $9)"
+            "INSERT INTO accounts (id, created_at, updated_at, deleted_at, tier) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET (created_at, updated_at, deleted_at, tier) = ($2, $3, $4, $5)"
         );
     }
 
@@ -72,7 +71,7 @@ fn test_upsert() {
         stmt.to_sql(&mut qb);
         assert_eq!(
             qb.sql(),
-            "INSERT INTO accounts (id, created_at, updated_at, deleted_at, tier) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET (created_at, updated_at, deleted_at, tier) = ($6, $7, $8, $9)"
+            "INSERT INTO accounts (id, created_at, updated_at, deleted_at, tier) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET (created_at, updated_at, deleted_at, tier) = ($2, $3, $4, $5)"
         );
     }
 
@@ -82,7 +81,7 @@ fn test_upsert() {
         stmt.to_sql(&mut qb);
         assert_eq!(
             qb.sql(),
-            "INSERT INTO accounts (id, created_at, updated_at, deleted_at, tier) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET (created_at, updated_at, deleted_at, tier) = ($6, $7, $8, $9)"
+            "INSERT INTO accounts (id, created_at, updated_at, deleted_at, tier) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET (created_at, updated_at, deleted_at, tier) = ($2, $3, $4, $5)"
         );
     }
 }
