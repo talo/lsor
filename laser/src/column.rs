@@ -2,7 +2,10 @@ use std::fmt::Display;
 
 use sqlx::{Postgres, QueryBuilder};
 
-use crate::sql::{IntoSql, ToSql};
+use crate::{
+    sql::{IntoSql, ToSql},
+    Order, OrderBy,
+};
 
 pub trait Column<'args>: ToSql<'args> + IntoSql {}
 
@@ -17,6 +20,36 @@ pub fn column(name: &str) -> ColumnName<&str> {
 #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ColumnName<D> {
     pub name: D,
+}
+
+impl<D> ColumnName<D> {
+    pub fn asc(self) -> OrderBy<Self> {
+        OrderBy {
+            expr: self,
+            order: Order::Asc,
+        }
+    }
+
+    pub fn desc(self) -> OrderBy<Self> {
+        OrderBy {
+            expr: self,
+            order: Order::Desc,
+        }
+    }
+
+    pub fn as_asc(&self) -> OrderBy<&Self> {
+        OrderBy {
+            expr: self,
+            order: Order::Asc,
+        }
+    }
+
+    pub fn as_desc(&self) -> OrderBy<&Self> {
+        OrderBy {
+            expr: self,
+            order: Order::Desc,
+        }
+    }
 }
 
 impl<'args, D> ToSql<'args> for ColumnName<D>

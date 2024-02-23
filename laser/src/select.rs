@@ -5,7 +5,7 @@ use crate::{
     sql::IntoSql,
 };
 
-use super::{ord::Order, sql::ToSql};
+use super::sql::ToSql;
 
 pub fn from<T>(table_reference: T, alias: &'static str) -> FromClause<T> {
     FromClause {
@@ -123,11 +123,10 @@ impl<ExprList, FromItems> Select<ExprList, FromItems> {
         }
     }
 
-    pub fn order_by<E>(self, expr: E, order: Order) -> Ordered<Self, E> {
+    pub fn order_by<E>(self, order_by: OrderBy<E>) -> Ordered<Self, E> {
         Ordered {
             selection: self,
-            cursor_expr: expr,
-            order,
+            order_by: order_by.into(),
         }
     }
 }
@@ -222,11 +221,10 @@ pub struct Filtered<S, C> {
 }
 
 impl<S, C> Filtered<S, C> {
-    pub fn order_by<E>(self, expr: E, order: Order) -> Ordered<Self, E> {
+    pub fn order_by<E>(self, order_by: OrderBy<E>) -> Ordered<Self, E> {
         Ordered {
             selection: self,
-            cursor_expr: expr,
-            order,
+            order_by: order_by.into(),
         }
     }
 }
@@ -267,11 +265,10 @@ where
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Ordered<S, E> {
     pub selection: S,
-    pub cursor_expr: E,
-    pub order: Order,
+    pub order_by: OrderBy<E>,
 }
 
 impl<S, E> Ordered<S, E> {
@@ -291,9 +288,9 @@ where
     fn to_sql(&'args self, qb: &mut QueryBuilder<'args, Postgres>) {
         self.selection.to_sql(qb);
         qb.push(" ORDER BY ");
-        self.cursor_expr.to_sql(qb);
+        self.order_by.expr.to_sql(qb);
         qb.push(" ");
-        self.order.to_sql(qb);
+        self.order_by.order.to_sql(qb);
     }
 }
 
@@ -305,9 +302,9 @@ where
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
         self.selection.into_sql(qb);
         qb.push(" ORDER BY ");
-        self.cursor_expr.into_sql(qb);
+        self.order_by.expr.into_sql(qb);
         qb.push(" ");
-        self.order.into_sql(qb);
+        self.order_by.order.into_sql(qb);
     }
 }
 
@@ -319,9 +316,9 @@ where
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
         self.selection.into_sql(qb);
         qb.push(" ORDER BY ");
-        self.cursor_expr.into_sql(qb);
+        self.order_by.expr.into_sql(qb);
         qb.push(" ");
-        self.order.into_sql(qb);
+        self.order_by.order.into_sql(qb);
     }
 }
 
@@ -330,8 +327,8 @@ impl<S, E> AsOrderBy for Ordered<S, E> {
 
     fn as_order_by(&self) -> OrderBy<&Self::E> {
         OrderBy {
-            expr: &self.cursor_expr,
-            order: self.order,
+            expr: &self.order_by.expr,
+            order: self.order_by.order,
         }
     }
 }
@@ -341,8 +338,8 @@ impl<S, E> AsOrderBy for &Ordered<S, E> {
 
     fn as_order_by(&self) -> OrderBy<&Self::E> {
         OrderBy {
-            expr: &self.cursor_expr,
-            order: self.order,
+            expr: &self.order_by.expr,
+            order: self.order_by.order,
         }
     }
 }
@@ -355,8 +352,8 @@ where
 
     fn to_order_by(&self) -> OrderBy<Self::E> {
         OrderBy {
-            expr: self.cursor_expr,
-            order: self.order,
+            expr: self.order_by.expr,
+            order: self.order_by.order,
         }
     }
 }
@@ -369,8 +366,8 @@ where
 
     fn to_order_by(&self) -> OrderBy<Self::E> {
         OrderBy {
-            expr: self.cursor_expr,
-            order: self.order,
+            expr: self.order_by.expr,
+            order: self.order_by.order,
         }
     }
 }

@@ -140,6 +140,56 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         _ => panic!("Laser cannot be derived for non-structs"),
     };
 
+    let order_by_ident = concatenate_idents(&name, &Ident::new("OrderBy", Span::call_site()));
+    let order_by_variants = match &ast.data {
+        // Struct
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(named) => named.named.iter().map(|field| {
+                let field_name = field.ident.clone().unwrap();
+                let field_ty = &field.ty;
+                let variant_name = Ident::new(&snake_case_to_camel_case(&field_name.to_string()), Span::call_site());
+                let field_flatten = is_flatten(&field.attrs);
+                if field_flatten {
+                    quote! { #variant_name(<#field_ty as ::laser::ord::Orderable>::OrderBy) }
+                } else {
+                    quote! { #variant_name(::laser::ord::Order) }
+                }
+            }),
+            Fields::Unnamed(..) => {
+                panic!("Laser cannot be derived for structs with unnamed fields")
+            }
+            Fields::Unit => panic!("Laser cannot be derived for unit-structs"),
+        },
+        _ => panic!("Laser cannot be derived for non-structs"),
+    };
+    let order_by_match_arms = match &ast.data {
+        // Struct
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(named) => named.named.iter().map(|field| {
+                let field_name = field.ident.clone().unwrap();
+                let variant_name = Ident::new(&snake_case_to_camel_case(&field_name.to_string()), Span::call_site());
+                let field_flatten = is_flatten(&field.attrs);
+                if field_flatten {
+                    quote! {                            
+                        #order_by_ident::#variant_name(order_by) => {
+                            use ::laser::ord::ToOrderBy;
+                            order_by.to_order_by()
+                        }
+                    }
+                } else {
+                    quote! {
+                        #order_by_ident::#variant_name(order) => ::laser::ord::OrderBy { expr: ::laser::column::col(stringify!(#field_name)), order: order.clone() },
+                    }
+                }
+            }).collect::<Vec<_>>(),
+            Fields::Unnamed(..) => {
+                panic!("Laser cannot be derived for structs with unnamed fields")
+            }
+            Fields::Unit => panic!("Laser cannot be derived for unit-structs"),
+        },
+        _ => panic!("Laser cannot be derived for non-structs"),
+    };
+
     let filter_ident = concatenate_idents(&name, &Ident::new("Filter", Span::call_site()));
     let all_filter_ident = concatenate_idents(&name, &Ident::new("AllFilter", Span::call_site()));
     let any_filter_ident = concatenate_idents(&name, &Ident::new("AnyFilter", Span::call_site()));
@@ -345,6 +395,36 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                 .chain([
                     #(#to_values,)*
                 ])
+            }
+        }
+
+        #[derive(::std::clone::Clone, ::std::fmt::Debug, ::async_graphql::OneofObject)]
+        #[graphql(rename_fields = "snake_case")]
+        pub enum #order_by_ident {
+            #(#order_by_variants,)*
+        }
+
+        impl ::laser::ord::Orderable for #name {
+            type OrderBy = #order_by_ident;
+        }
+        
+        impl ::laser::ord::ToOrderBy for #order_by_ident {
+            type E = ::laser::column::ColumnName<&'static str>;
+        
+            fn to_order_by(&self) -> ::laser::ord::OrderBy<Self::E> {
+                match self {
+                    #(#order_by_match_arms)*
+                }
+            }
+        }
+        
+        impl ::laser::ord::IntoOrderBy for #order_by_ident {
+            type E = ::laser::column::ColumnName<&'static str>;
+        
+            fn into_order_by(self) -> ::laser::ord::OrderBy<Self::E> {
+                match self {
+                    #(#order_by_match_arms)*
+                }
             }
         }
 
@@ -580,7 +660,7 @@ fn is_pk(attrs: &Vec<Attribute>) -> bool {
         if attr.path().is_ident("laser") {
             match &attr.meta {
                 Meta::List(meta_list) => {
-                    if let Some("pk") = meta_list
+                    if let Some("primary_key") = meta_list
                         .tokens
                         .clone()
                         .into_iter()
@@ -686,4 +766,15 @@ fn cmp_attrs(attrs: &Vec<Attribute>) -> Vec<String> {
 fn concatenate_idents(ident1: &Ident, ident2: &Ident) -> Ident {
     let combined = format!("{}{}", ident1, ident2);
     Ident::new(&combined, Span::call_site())
+}
+
+fn snake_case_to_camel_case(s: &str) -> String {
+    s.split('_')
+     .map(|word| {
+         let mut c = word.chars();
+         c.next()
+          .map(|f| f.to_uppercase().collect::<String>() + c.as_str())
+          .unwrap_or_default()
+     })
+     .collect()
 }

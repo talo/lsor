@@ -34,7 +34,6 @@ mod test {
         column::col,
         cond::{eq, if_then_else},
         cursor::{Cursor, DateTimeCursor},
-        ord::desc,
         page::{select_page_info, select_page_items, Pagination},
         select::{all, from},
         sql::IntoSql,
@@ -51,7 +50,7 @@ mod test {
                 eq(col("id"), 1i32),
                 eq(col("foo"), col("bar")),
             ))
-            .order_by(col("id"), desc())
+            .order_by(col("id").desc())
             .limit(10)
             .into_sql(&mut qb);
         assert_eq!(
@@ -70,7 +69,7 @@ mod test {
                 eq(col("id"), 1i32),
                 eq(col("foo"), col("bar")),
             ))
-            .order_by(col("id"), desc())
+            .order_by(col("id").desc())
             .limit(10)
             .into_sql(&mut qb);
         assert_eq!(
@@ -86,7 +85,7 @@ mod test {
                 eq(col("id"), 1i32),
                 eq(col("foo"), col("bar")),
             ))
-            .order_by(col("id"), desc())
+            .order_by(col("id").desc())
             .limit(10)
             .into_sql(&mut qb);
         assert_eq!(
@@ -101,7 +100,7 @@ mod test {
         table("foo")
             .select(all())
             .filter_by(eq(col("id"), 1))
-            .order_by(col("id"), desc())
+            .order_by(col("id").desc())
             .limit(10)
             .into_sql(&mut qb);
         assert_eq!(
@@ -118,7 +117,7 @@ mod test {
         let last = 5;
 
         let mut qb = QueryBuilder::new("");
-        let subquery = table("entities").select(all()).order_by(col("id"), desc());
+        let subquery = table("entities").select(all()).order_by(col("id").desc());
         select_page_items(
             &subquery,
             Pagination {
@@ -152,7 +151,7 @@ mod test {
 
         let mut qb = QueryBuilder::new("");
         let subquery = from(
-            table("entities").select(all()).order_by(col("id"), desc()),
+            table("entities").select(all()).order_by(col("id").desc()),
             "entities_alias",
         )
         .select(all());

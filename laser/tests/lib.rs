@@ -4,7 +4,8 @@ use laser::{
     sql::{IntoSql, ToSql},
     table::Table,
     upsert::{upsert, upsert_into},
-    Cursor, DateTimeCursor, DateTimeFilter, Filterable, Laser, Pagination, StringFilter,
+    Cursor, DateTimeCursor, DateTimeFilter, Filterable, IntoOrderBy, Laser, Order, Pagination,
+    StringFilter,
 };
 use laser_proc_macro::Filterable;
 use sqlx::{QueryBuilder, Row as _, Type};
@@ -12,7 +13,7 @@ use uuid::Uuid;
 
 #[derive(Clone, Laser, SimpleObject)]
 pub struct Metadata {
-    #[laser(pk)]
+    #[laser(primary_key)]
     pub id: Uuid,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -110,7 +111,7 @@ fn select_page() {
             .with_metadata(MetadataFilter::created_at(DateTimeFilter::Eq(Utc::now())))
             .with_name(StringFilter::Eq("test".to_string())),
         )
-        .order_by(laser::col("id"), laser::desc());
+        .order_by(AccountOrderBy::Metadata(MetadataOrderBy::Id(Order::Desc)).into_order_by());
     laser::select_page_items(
         &subquery,
         Pagination {

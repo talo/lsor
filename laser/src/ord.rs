@@ -6,6 +6,10 @@ use crate::sql::IntoSql;
 
 use super::sql::ToSql;
 
+pub trait Orderable {
+    type OrderBy;
+}
+
 pub trait AsOrderBy {
     type E;
 

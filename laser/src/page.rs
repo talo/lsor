@@ -7,6 +7,7 @@ use crate::{
     select::{all, from},
     sql::{IntoSql, ToSql},
     value::{alias, concat},
+    OrderBy,
 };
 
 use super::cursor::Cursor;
@@ -58,17 +59,26 @@ where
                             self.pagination.cursor.decode(&self.pagination.before),
                         ),
                     ))
-                    .order_by(order_by_expr, order)
+                    .order_by(OrderBy {
+                        expr: order_by_expr,
+                        order,
+                    })
                     .limit(self.pagination.first),
                 "page_items_outer",
             )
             .select(all())
-            .order_by(order_by_expr, order_flipped)
+            .order_by(OrderBy {
+                expr: order_by_expr,
+                order: order_flipped,
+            })
             .limit(self.pagination.last),
             "page_items",
         )
         .select(concat(all(), alias(order_by_expr, "cursor")))
-        .order_by(order_by_expr, order)
+        .order_by(OrderBy {
+            expr: order_by_expr,
+            order,
+        })
         .into_sql(qb);
     }
 }
@@ -98,17 +108,26 @@ where
                             self.pagination.cursor.decode(&self.pagination.before),
                         ),
                     ))
-                    .order_by(&order_by_expr, order)
+                    .order_by(OrderBy {
+                        expr: &order_by_expr,
+                        order,
+                    })
                     .limit(self.pagination.first),
                 "page_items_outer",
             )
             .select(all())
-            .order_by(&order_by_expr, order_flipped)
+            .order_by(OrderBy {
+                expr: &order_by_expr,
+                order: order_flipped,
+            })
             .limit(self.pagination.last),
             "page_items",
         )
         .select(concat(all(), alias(&order_by_expr, "cursor")))
-        .order_by(&order_by_expr, order)
+        .order_by(OrderBy {
+            expr: &order_by_expr,
+            order,
+        })
         .into_sql(qb);
     }
 }
