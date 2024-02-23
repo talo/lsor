@@ -17,11 +17,23 @@ pub trait IntoSql {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>);
 }
 
-impl<T> IntoSql for T
-where
-    for<'args> T: 'args + Encode<'args, Postgres> + Send + Type<Postgres>,
-{
+impl IntoSql for i32 {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
         qb.push_bind(self);
     }
 }
+
+impl IntoSql for &'static str {
+    fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
+        qb.push_bind(self);
+    }
+}
+
+// impl<T> IntoSql for T
+// where
+//     for<'args> T: 'args + Encode<'args, Postgres> + Send + Type<Postgres>,
+// {
+//     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
+//         qb.push_bind(self);
+//     }
+// }

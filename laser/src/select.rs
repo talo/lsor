@@ -255,6 +255,18 @@ where
     }
 }
 
+impl<S, C> IntoSql for &Filtered<S, C>
+where
+    for<'args> &'args S: IntoSql,
+    for<'args> &'args C: IntoSql,
+{
+    fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
+        self.selection.into_sql(qb);
+        qb.push(" WHERE ");
+        self.condition.into_sql(qb);
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ordered<S, E> {
     pub selection: S,

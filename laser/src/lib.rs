@@ -1,7 +1,8 @@
 pub mod column;
 pub mod cond;
 pub mod cursor;
-pub mod lit;
+pub mod filter;
+pub mod literal;
 pub mod ord;
 pub mod page;
 pub mod select;
@@ -9,6 +10,18 @@ pub mod sql;
 pub mod table;
 pub mod upsert;
 pub mod value;
+
+pub use column::*;
+pub use cond::*;
+pub use cursor::*;
+pub use filter::*;
+pub use literal::*;
+pub use ord::*;
+pub use page::*;
+pub use select::*;
+pub use table::*;
+pub use upsert::*;
+pub use value::*;
 
 pub use laser_proc_macro::Laser;
 

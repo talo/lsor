@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{database::HasValueRef, Decode, Postgres, TypeInfo, ValueRef as _};
 use uuid::Uuid;
 
-use crate::lit::Literal;
+use crate::literal::Literal;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum Cursor {
