@@ -23,7 +23,7 @@ mod test {
         cursor::{Cursor, DateTimeCursor},
         ord::desc,
         page::{select_page_info, select_page_items, Pagination},
-        select::all,
+        select::{all, from},
         sql::IntoSql,
         table::table,
     };
@@ -35,7 +35,7 @@ mod test {
             .select(if_then_else(true, all(), col("foo")))
             .filter_by(if_then_else(
                 true,
-                eq(col("id"), 1),
+                eq(col("id"), 1i32),
                 eq(col("foo"), col("bar")),
             ))
             .order_by(col("id"), desc())
@@ -54,7 +54,7 @@ mod test {
             .select(all())
             .filter_by(if_then_else(
                 true,
-                eq(col("id"), 1),
+                eq(col("id"), 1i32),
                 eq(col("foo"), col("bar")),
             ))
             .order_by(col("id"), desc())
@@ -70,7 +70,7 @@ mod test {
             .select(all())
             .filter_by(if_then_else(
                 false,
-                eq(col("id"), 1),
+                eq(col("id"), 1i32),
                 eq(col("foo"), col("bar")),
             ))
             .order_by(col("id"), desc())
@@ -98,15 +98,16 @@ mod test {
     }
 
     #[test]
-    pub fn select_page() {
+    pub fn select_page_direct() {
         let after = DateTimeCursor::encode(Utc::now());
         let before = DateTimeCursor::encode(Utc::now());
         let first = 10;
         let last = 5;
 
         let mut qb = QueryBuilder::new("");
+        let subquery = table("entities").select(all()).order_by(col("id"), desc());
         select_page_items(
-            table("entities").select(all()).order_by(col("id"), desc()),
+            &subquery,
             Pagination {
                 after,
                 before,
@@ -120,12 +121,49 @@ mod test {
 
         let mut qb = QueryBuilder::new("");
         select_page_info(
-            table("entities").select(all()).order_by(col("id"), desc()),
+            &subquery,
             Cursor::DateTime,
             DateTimeCursor::encode(Utc::now()),
             DateTimeCursor::encode(Utc::now()),
         )
         .into_sql(&mut qb);
         assert_eq!(qb.into_sql(), "SELECT COUNT(*) AS total_count, COUNT(CASE WHEN (id) < ($1) THEN 1 END) > 0 AS has_prev_page, COUNT(CASE WHEN (id) > ($2) THEN 1 END) > 0 AS has_next_page FROM (SELECT * FROM entities ORDER BY id DESC) AS page_info");
+    }
+
+    #[test]
+    pub fn select_page_indirect() {
+        let after = DateTimeCursor::encode(Utc::now());
+        let before = DateTimeCursor::encode(Utc::now());
+        let first = 10;
+        let last = 5;
+
+        let mut qb = QueryBuilder::new("");
+        let subquery = from(
+            table("entities").select(all()).order_by(col("id"), desc()),
+            "entities_alias",
+        )
+        .select(all());
+        select_page_items(
+            &subquery,
+            Pagination {
+                after,
+                before,
+                first,
+                last,
+                cursor: Cursor::DateTime,
+            },
+        )
+        .into_sql(&mut qb);
+        assert_eq!(qb.into_sql(), "SELECT *, id AS cursor FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM entities ORDER BY id DESC) AS entities_alias) AS page_items_inner WHERE ((id) > ($1)) AND ((id) < ($2)) ORDER BY id DESC LIMIT $3) AS page_items_outer ORDER BY id ASC LIMIT $4) AS page_items ORDER BY id DESC");
+
+        let mut qb = QueryBuilder::new("");
+        select_page_info(
+            &subquery,
+            Cursor::DateTime,
+            DateTimeCursor::encode(Utc::now()),
+            DateTimeCursor::encode(Utc::now()),
+        )
+        .into_sql(&mut qb);
+        assert_eq!(qb.into_sql(), "SELECT COUNT(*) AS total_count, COUNT(CASE WHEN (id) < ($1) THEN 1 END) > 0 AS has_prev_page, COUNT(CASE WHEN (id) > ($2) THEN 1 END) > 0 AS has_next_page FROM (SELECT * FROM (SELECT * FROM entities ORDER BY id DESC) AS entities_alias) AS page_info");
     }
 }

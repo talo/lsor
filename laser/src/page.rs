@@ -3,12 +3,13 @@ use sqlx::{Postgres, QueryBuilder};
 
 use crate::{
     cond::{and, gt, lt},
+    ord::{AsOrderBy, ToOrderBy},
     select::{all, from},
     sql::{IntoSql, ToSql},
     value::{alias, concat},
 };
 
-use super::{cursor::Cursor, select::Ordered};
+use super::cursor::Cursor;
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct Pagination {
@@ -19,106 +20,105 @@ pub struct Pagination {
     pub last: i32,
 }
 
-pub fn select_page_items<S, E>(
-    subquery: Ordered<S, E>,
-    pagination: Pagination,
-) -> SelectPageItems<S, E> {
+pub fn select_page_items<O>(subquery: O, pagination: Pagination) -> SelectPageItems<O> {
     SelectPageItems {
         subquery,
         pagination,
     }
 }
 
-pub struct SelectPageItems<S, E> {
-    pub subquery: Ordered<S, E>,
+pub struct SelectPageItems<O> {
+    pub subquery: O,
     pub pagination: Pagination,
 }
 
-impl<'args, S, E> ToSql<'args> for SelectPageItems<S, E>
+impl<'args, O> ToSql<'args> for SelectPageItems<O>
 where
-    S: 'args,
-    E: 'args,
-    &'args E: IntoSql,
-    &'args Ordered<S, E>: IntoSql,
+    &'args O: IntoSql,
+    &'args O::E: IntoSql,
+    O: 'args + AsOrderBy,
 {
     fn to_sql(&'args self, qb: &mut QueryBuilder<'args, Postgres>) {
-        let cursor_expr = &self.subquery.cursor_expr;
-        let order = self.subquery.order;
-        let order_flipped = self.subquery.order.flip();
+        let order_by = self.subquery.as_order_by();
+        let order_by_expr = order_by.expr;
+        let order = order_by.order;
+        let order_flipped = order.flip();
+
         from(
             from(
                 from(&self.subquery, "page_items_inner")
                     .select(all())
                     .filter_by(and(
                         gt(
-                            cursor_expr,
+                            order_by_expr,
                             self.pagination.cursor.decode(&self.pagination.after),
                         ),
                         lt(
-                            cursor_expr,
+                            order_by_expr,
                             self.pagination.cursor.decode(&self.pagination.before),
                         ),
                     ))
-                    .order_by(cursor_expr, order)
+                    .order_by(order_by_expr, order)
                     .limit(self.pagination.first),
                 "page_items_outer",
             )
             .select(all())
-            .order_by(cursor_expr, order_flipped)
+            .order_by(order_by_expr, order_flipped)
             .limit(self.pagination.last),
             "page_items",
         )
-        .select(concat(all(), alias(cursor_expr, "cursor")))
-        .order_by(cursor_expr, order)
+        .select(concat(all(), alias(order_by_expr, "cursor")))
+        .order_by(order_by_expr, order)
         .into_sql(qb);
     }
 }
 
-impl<S, E> IntoSql for SelectPageItems<S, E>
+impl<O> IntoSql for SelectPageItems<O>
 where
-    for<'args> &'args E: IntoSql,
-    for<'args> &'args Ordered<S, E>: IntoSql,
+    for<'args> &'args O::E: IntoSql,
+    O: ToOrderBy + IntoSql,
 {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
-        let cursor_expr = &self.subquery.cursor_expr;
-        let order = self.subquery.order;
-        let order_flipped = self.subquery.order.flip();
+        let order_by = self.subquery.to_order_by();
+        let order_by_expr = order_by.expr;
+        let order = order_by.order;
+        let order_flipped = order.flip();
 
         from(
             from(
-                from(&self.subquery, "page_items_inner")
+                from(self.subquery, "page_items_inner")
                     .select(all())
                     .filter_by(and(
                         gt(
-                            cursor_expr,
+                            &order_by_expr,
                             self.pagination.cursor.decode(&self.pagination.after),
                         ),
                         lt(
-                            cursor_expr,
+                            &order_by_expr,
                             self.pagination.cursor.decode(&self.pagination.before),
                         ),
                     ))
-                    .order_by(cursor_expr, order)
+                    .order_by(&order_by_expr, order)
                     .limit(self.pagination.first),
                 "page_items_outer",
             )
             .select(all())
-            .order_by(cursor_expr, order_flipped)
+            .order_by(&order_by_expr, order_flipped)
             .limit(self.pagination.last),
             "page_items",
         )
-        .select(concat(all(), alias(cursor_expr, "cursor")))
-        .order_by(cursor_expr, order)
+        .select(concat(all(), alias(&order_by_expr, "cursor")))
+        .order_by(&order_by_expr, order)
         .into_sql(qb);
     }
 }
 
-pub fn select_page_info<S, E>(
-    subquery: Ordered<S, E>,
+pub fn select_page_info<O>(
+    subquery: O,
     cursor: Cursor,
     start: String,
     end: String,
-) -> SelectPageInfo<S, E> {
+) -> SelectPageInfo<O> {
     SelectPageInfo {
         subquery,
         cursor,
@@ -127,22 +127,28 @@ pub fn select_page_info<S, E>(
     }
 }
 
-pub struct SelectPageInfo<S, E> {
-    pub subquery: Ordered<S, E>,
+pub struct SelectPageInfo<O> {
+    pub subquery: O,
     pub cursor: Cursor,
     pub start: String,
     pub end: String,
 }
 
-impl<'args, S, E> ToSql<'args> for SelectPageInfo<S, E>
+impl<'args, O> ToSql<'args> for SelectPageInfo<O>
 where
-    E: 'args,
-    &'args E: IntoSql,
-    Ordered<S, E>: ToSql<'args>,
+    O: AsOrderBy + ToSql<'args>,
+    O::E: 'args,
+    &'args O::E: IntoSql,
 {
     fn to_sql(&'args self, qb: &mut QueryBuilder<'args, Postgres>) {
-        let after_cond = gt(&self.subquery.cursor_expr, self.cursor.decode(&self.start));
-        let before_cond = lt(&self.subquery.cursor_expr, self.cursor.decode(&self.end));
+        let after_cond = gt(
+            self.subquery.as_order_by().expr,
+            self.cursor.decode(&self.start),
+        );
+        let before_cond = lt(
+            self.subquery.as_order_by().expr,
+            self.cursor.decode(&self.end),
+        );
         qb.push("SELECT COUNT(*) AS total_count, COUNT(CASE WHEN ");
         before_cond.into_sql(qb);
         qb.push(" THEN 1 END) > 0 AS has_prev_page, COUNT(CASE WHEN ");
@@ -153,14 +159,21 @@ where
     }
 }
 
-impl<S, E> IntoSql for SelectPageInfo<S, E>
+impl<O> IntoSql for SelectPageInfo<O>
 where
-    for<'args> &'args E: IntoSql,
-    Ordered<S, E>: IntoSql,
+    O: AsOrderBy + IntoSql,
+    O::E: IntoSql,
+    for<'args> &'args O::E: IntoSql,
 {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
-        let after_cond = gt(&self.subquery.cursor_expr, self.cursor.decode(&self.start));
-        let before_cond = lt(&self.subquery.cursor_expr, self.cursor.decode(&self.end));
+        let after_cond = gt(
+            self.subquery.as_order_by().expr,
+            self.cursor.decode(&self.start),
+        );
+        let before_cond = lt(
+            self.subquery.as_order_by().expr,
+            self.cursor.decode(&self.end),
+        );
         qb.push("SELECT COUNT(*) AS total_count, COUNT(CASE WHEN ");
         before_cond.into_sql(qb);
         qb.push(" THEN 1 END) > 0 AS has_prev_page, COUNT(CASE WHEN ");

@@ -6,16 +6,22 @@ use crate::sql::IntoSql;
 
 use super::sql::ToSql;
 
-pub trait AsOrderBy<E> {
-    fn as_order_by(&self) -> OrderBy<&E>;
+pub trait AsOrderBy {
+    type E;
+
+    fn as_order_by(&self) -> OrderBy<&Self::E>;
 }
 
-pub trait ToOrderBy<E> {
-    fn to_order_by(&self) -> OrderBy<E>;
+pub trait ToOrderBy {
+    type E;
+
+    fn to_order_by(&self) -> OrderBy<Self::E>;
 }
 
-pub trait IntoOrderBy<E> {
-    fn into_order_by(self) -> OrderBy<E>;
+pub trait IntoOrderBy {
+    type E;
+
+    fn into_order_by(self) -> OrderBy<Self::E>;
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Enum, Eq, Hash, PartialEq, Serialize)]
@@ -72,8 +78,10 @@ pub struct OrderBy<E> {
     pub order: Order,
 }
 
-impl<E> AsOrderBy<E> for OrderBy<E> {
-    fn as_order_by(&self) -> OrderBy<&E> {
+impl<E> AsOrderBy for OrderBy<E> {
+    type E = E;
+
+    fn as_order_by(&self) -> OrderBy<&Self::E> {
         OrderBy {
             expr: &self.expr,
             order: self.order,
@@ -81,11 +89,13 @@ impl<E> AsOrderBy<E> for OrderBy<E> {
     }
 }
 
-impl<E> ToOrderBy<E> for OrderBy<E>
+impl<E> ToOrderBy for OrderBy<E>
 where
     E: Copy,
 {
-    fn to_order_by(&self) -> OrderBy<E> {
+    type E = E;
+
+    fn to_order_by(&self) -> OrderBy<Self::E> {
         Self {
             expr: self.expr,
             order: self.order,
@@ -93,8 +103,10 @@ where
     }
 }
 
-impl<E> IntoOrderBy<E> for OrderBy<E> {
-    fn into_order_by(self) -> OrderBy<E> {
+impl<E> IntoOrderBy for OrderBy<E> {
+    type E = E;
+
+    fn into_order_by(self) -> OrderBy<Self::E> {
         Self {
             expr: self.expr,
             order: self.order,

@@ -1,6 +1,9 @@
 use sqlx::{Postgres, QueryBuilder};
 
-use crate::sql::IntoSql;
+use crate::{
+    ord::{AsOrderBy, OrderBy, ToOrderBy},
+    sql::IntoSql,
+};
 
 use super::{ord::Order, sql::ToSql};
 
@@ -47,6 +50,62 @@ where
         self.table_reference.into_sql(qb);
         qb.push(") AS ");
         qb.push(self.alias);
+    }
+}
+
+impl<T> IntoSql for &FromClause<T>
+where
+    for<'args> &'args T: IntoSql,
+{
+    fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
+        qb.push("(");
+        self.table_reference.into_sql(qb);
+        qb.push(") AS ");
+        qb.push(self.alias);
+    }
+}
+
+impl<T> AsOrderBy for FromClause<T>
+where
+    T: AsOrderBy,
+{
+    type E = T::E;
+
+    fn as_order_by(&self) -> OrderBy<&Self::E> {
+        self.table_reference.as_order_by()
+    }
+}
+
+impl<T> AsOrderBy for &FromClause<T>
+where
+    T: AsOrderBy,
+{
+    type E = T::E;
+
+    fn as_order_by(&self) -> OrderBy<&Self::E> {
+        self.table_reference.as_order_by()
+    }
+}
+
+impl<T> ToOrderBy for FromClause<T>
+where
+    T: ToOrderBy,
+{
+    type E = T::E;
+
+    fn to_order_by(&self) -> OrderBy<Self::E> {
+        self.table_reference.to_order_by()
+    }
+}
+
+impl<T> ToOrderBy for &FromClause<T>
+where
+    T: ToOrderBy,
+{
+    type E = T::E;
+
+    fn to_order_by(&self) -> OrderBy<Self::E> {
+        self.table_reference.to_order_by()
     }
 }
 
@@ -109,6 +168,50 @@ where
         self.expr.into_sql(qb);
         qb.push(" FROM ");
         self.from_items.into_sql(qb);
+    }
+}
+
+impl<E, FromItems> AsOrderBy for Select<E, FromItems>
+where
+    FromItems: AsOrderBy,
+{
+    type E = FromItems::E;
+
+    fn as_order_by(&self) -> OrderBy<&Self::E> {
+        self.from_items.as_order_by()
+    }
+}
+
+impl<E, FromItems> AsOrderBy for &Select<E, FromItems>
+where
+    FromItems: AsOrderBy,
+{
+    type E = FromItems::E;
+
+    fn as_order_by(&self) -> OrderBy<&Self::E> {
+        self.from_items.as_order_by()
+    }
+}
+
+impl<E, FromItems> ToOrderBy for Select<E, FromItems>
+where
+    FromItems: ToOrderBy,
+{
+    type E = FromItems::E;
+
+    fn to_order_by(&self) -> OrderBy<Self::E> {
+        self.from_items.to_order_by()
+    }
+}
+
+impl<E, FromItems> ToOrderBy for &Select<E, FromItems>
+where
+    FromItems: ToOrderBy,
+{
+    type E = FromItems::E;
+
+    fn to_order_by(&self) -> OrderBy<Self::E> {
+        self.from_items.to_order_by()
     }
 }
 
@@ -207,6 +310,56 @@ where
         self.cursor_expr.into_sql(qb);
         qb.push(" ");
         self.order.into_sql(qb);
+    }
+}
+
+impl<S, E> AsOrderBy for Ordered<S, E> {
+    type E = E;
+
+    fn as_order_by(&self) -> OrderBy<&Self::E> {
+        OrderBy {
+            expr: &self.cursor_expr,
+            order: self.order,
+        }
+    }
+}
+
+impl<S, E> AsOrderBy for &Ordered<S, E> {
+    type E = E;
+
+    fn as_order_by(&self) -> OrderBy<&Self::E> {
+        OrderBy {
+            expr: &self.cursor_expr,
+            order: self.order,
+        }
+    }
+}
+
+impl<S, E> ToOrderBy for Ordered<S, E>
+where
+    E: Copy,
+{
+    type E = E;
+
+    fn to_order_by(&self) -> OrderBy<Self::E> {
+        OrderBy {
+            expr: self.cursor_expr,
+            order: self.order,
+        }
+    }
+}
+
+impl<S, E> ToOrderBy for &Ordered<S, E>
+where
+    E: Copy,
+{
+    type E = E;
+
+    fn to_order_by(&self) -> OrderBy<Self::E> {
+        OrderBy {
+            expr: self.cursor_expr,
+            order: self.order,
+        }
     }
 }
 

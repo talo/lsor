@@ -29,6 +29,7 @@ pub fn table(name: &str) -> TableName<&str> {
     TableName { name }
 }
 
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct TableName<D> {
     pub name: D,
 }

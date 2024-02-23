@@ -14,6 +14,7 @@ pub fn column(name: &str) -> ColumnName<&str> {
     ColumnName { name }
 }
 
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ColumnName<D> {
     pub name: D,
 }
