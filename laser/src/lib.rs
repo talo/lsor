@@ -10,6 +10,8 @@ pub mod table;
 pub mod upsert;
 pub mod value;
 
+pub use laser_proc_macro::Laser;
+
 #[cfg(test)]
 mod test {
     use chrono::Utc;
