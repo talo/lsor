@@ -70,16 +70,16 @@ impl Cursor {
     pub fn infer(column: <Postgres as HasValueRef<'_>>::ValueRef) -> sqlx::Result<String> {
         Ok(match column.type_info().as_ref().name() {
             "INT" | "INTEGER" => I32Cursor::encode(
-                <i32 as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,
+                &<i32 as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,
             ),
             "TEXT" | "VARCHAR" => StringCursor::encode(
-                <String as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,
+                &<String as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,
             ),
             "UUID" => UuidCursor::encode(
-                <Uuid as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,
+                &<Uuid as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,
             ),
             "TIMESTAMP" | "TIMESTAMPTZ" => DateTimeCursor::encode(
-                <DateTime<Utc> as Decode<'_, Postgres>>::decode(column)
+                &<DateTime<Utc> as Decode<'_, Postgres>>::decode(column)
                     .map_err(sqlx::Error::Decode)?,
             ),
             x => {
@@ -99,21 +99,30 @@ impl Cursor {
         }
     }
 
-    pub fn encode_min(self) -> String {
-        match self {
-            Self::I32 => I32Cursor::encode(I32Cursor::min()),
-            Self::String => StringCursor::encode(StringCursor::min()),
-            Self::Uuid => UuidCursor::encode(UuidCursor::min()),
-            Self::DateTime => DateTimeCursor::encode(DateTimeCursor::min()),
+    pub fn encode(literal: &Literal) -> String {
+        match literal {
+            Literal::I32(v) => I32Cursor::encode(v),
+            Literal::String(v) => StringCursor::encode(v),
+            Literal::Uuid(v) => UuidCursor::encode(v),
+            Literal::DateTime(v) => DateTimeCursor::encode(v),
         }
     }
 
-    pub fn encode_max(self) -> String {
+    pub fn min(self) -> Literal {
         match self {
-            Self::I32 => I32Cursor::encode(I32Cursor::max()),
-            Self::String => StringCursor::encode(StringCursor::max()),
-            Self::Uuid => UuidCursor::encode(UuidCursor::max()),
-            Self::DateTime => DateTimeCursor::encode(DateTimeCursor::max()),
+            Self::I32 => Literal::I32(I32Cursor::min()),
+            Self::String => Literal::String(StringCursor::min()),
+            Self::Uuid => Literal::Uuid(UuidCursor::min()),
+            Self::DateTime => Literal::DateTime(DateTimeCursor::min()),
+        }
+    }
+
+    pub fn max(self) -> Literal {
+        match self {
+            Self::I32 => Literal::I32(I32Cursor::max()),
+            Self::String => Literal::String(StringCursor::max()),
+            Self::Uuid => Literal::Uuid(UuidCursor::max()),
+            Self::DateTime => Literal::DateTime(DateTimeCursor::max()),
         }
     }
 }
@@ -162,7 +171,7 @@ impl I32Cursor {
             })
     }
 
-    pub fn encode(decoded: i32) -> String {
+    pub fn encode(decoded: &i32) -> String {
         base64::engine::general_purpose::STANDARD.encode(decoded.to_be_bytes())
     }
 
@@ -194,7 +203,7 @@ impl StringCursor {
             })
     }
 
-    pub fn encode(decoded: String) -> String {
+    pub fn encode(decoded: &String) -> String {
         base64::engine::general_purpose::STANDARD.encode(decoded.as_bytes())
     }
 
@@ -228,7 +237,7 @@ impl UuidCursor {
             })
     }
 
-    pub fn encode(decoded: Uuid) -> String {
+    pub fn encode(decoded: &Uuid) -> String {
         base64::engine::general_purpose::STANDARD.encode(decoded.as_bytes())
     }
 
@@ -261,7 +270,7 @@ impl DateTimeCursor {
             })
     }
 
-    pub fn encode(decoded: DateTime<Utc>) -> String {
+    pub fn encode(decoded: &DateTime<Utc>) -> String {
         base64::engine::general_purpose::STANDARD.encode(
             decoded
                 .timestamp_nanos_opt()

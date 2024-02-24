@@ -86,52 +86,18 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         _ => panic!("Laser cannot be derived for non-structs"),
     };
 
-    let flattened_to_values = match &ast.data {
+    let into_column_values = match &ast.data {
         // Struct
         Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named.named.iter().filter_map(|field| {
+            Fields::Named(named) => named.named.iter().map(|field| {
                 let field_flatten = is_flatten(&field.attrs);
+                let field_name = field.ident.clone().unwrap();
                 if field_flatten {
-                    let field_name = field.ident.clone().unwrap();
-                    let field_type = &field.ty;
-                    Some(quote! { <#field_type as ::laser::value::ToValues>::to_values(&self.#field_name) })
+                    quote! { self.#field_name.into_column_values(qb) }
                 } else {
-                    None
+                    quote! { self.#field_name.into_sql(qb) }
                 }
             }).collect::<Vec<_>>(),
-            Fields::Unnamed(..) => {
-                panic!("Laser cannot be derived for structs with unnamed fields")
-            }
-            Fields::Unit => panic!("Laser cannot be derived for unit-structs"),
-        },
-        _ => panic!("Laser cannot be derived for non-structs"),
-    };
-    let flattened_to_values = if flattened_to_values.len() > 0 {
-        quote! {
-            [
-                #(#flattened_to_values,)*
-            ]
-            .into_iter()
-            .flatten()
-        }
-    } else {
-        quote! {
-            ::std::iter::empty()
-        }
-    };
-
-    let to_values = match &ast.data {
-        // Struct
-        Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named.named.iter().filter_map(|field| {
-                let field_name = field.ident.clone().unwrap();
-                let field_flatten = is_flatten(&field.attrs);
-                if !field_flatten {
-                    Some(quote! { &self.#field_name as &dyn ::laser::sql::ToSql })
-                } else {
-                    None
-                }
-            }),
             Fields::Unnamed(..) => {
                 panic!("Laser cannot be derived for structs with unnamed fields")
             }
@@ -246,11 +212,27 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                 let field_ty = &field.ty;
                 let field_flatten = is_flatten(&field.attrs);
                 if !field_flatten {
-                    quote! { pub #field_name: ::std::option::Option<<#field_ty as ::laser::filter::Filterable>::Filter>}
+                    if is_skip_graphql(&field.attrs) {
+                        quote! {
+                            #[graphql(skip)]
+                            pub #field_name: ::std::option::Option<<#field_ty as ::laser::filter::Filterable>::Filter>
+                        }
+                    } else {
+                        quote! {
+                            pub #field_name: ::std::option::Option<<#field_ty as ::laser::filter::Filterable>::Filter>
+                        }
+                    }
                 } else {
-                    quote! {
-                        #[graphql(flatten)]
-                        pub #field_name: <#field_ty as ::laser::filter::Filterable>::Filter
+                    if is_skip_graphql(&field.attrs) {
+                        quote! {
+                            #[graphql(flatten, skip)]
+                            pub #field_name: <#field_ty as ::laser::filter::Filterable>::Filter
+                        }
+                    } else {
+                        quote! {
+                            #[graphql(flatten)]
+                            pub #field_name: <#field_ty as ::laser::filter::Filterable>::Filter
+                        }
                     }
                 }
             }),
@@ -269,7 +251,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                 let field_flatten = is_flatten(&field.attrs);
                 if !field_flatten {
                     quote! {
-                        if let Some(filter) = &self.#field_name {
+                        if let Some(filter) = self.#field_name {
                             if needs_and {
                                 qb.push(" AND ");
                             }
@@ -425,14 +407,9 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                     #(#columns,)*
                 ])
             }
-        }
 
-        impl #impl_generics ::laser::value::ToValues for #name #ty_generics #where_clause {
-            fn to_values(&self) -> impl ::std::iter::Iterator<Item = &dyn ::laser::sql::ToSql> {
-                #flattened_to_values
-                .chain([
-                    #(#to_values,)*
-                ])
+            fn into_column_values(self, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) {
+                #(#into_column_values;)*
             }
         }
 
@@ -458,16 +435,6 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
             type E = ::laser::column::ColumnName;
         
             fn to_order_by(&self) -> ::laser::ord::OrderBy<Self::E> {
-                match self {
-                    #(#sort_by_match_arms)*
-                }
-            }
-        }
-        
-        impl ::laser::ord::IntoOrderBy for #sort_by_ident {
-            type E = ::laser::column::ColumnName;
-        
-            fn into_order_by(self) -> ::laser::ord::OrderBy<Self::E> {
                 match self {
                     #(#sort_by_match_arms)*
                 }
@@ -521,14 +488,14 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         }
 
         impl #all_filter_ident  {
-            pub fn into_sql(&self, needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
-                if let Some(all) = &self.all {
+            pub fn into_sql(self, needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
+                if let Some(all) = self.all {
                     if all.len() > 0 {
                         if needs_and {
                             qb.push(" AND ");
                         }
                         qb.push("(");
-                        for (i, filter) in all.iter().enumerate() {
+                        for (i, filter) in all.into_iter().enumerate() {
                             if i > 0 {
                                 qb.push(" AND ");
                             }
@@ -551,14 +518,14 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         }
 
         impl #any_filter_ident {
-            pub fn into_sql(&self, needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
-                if let Some(any) = &self.any {
+            pub fn into_sql(self, needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
+                if let Some(any) = self.any {
                     if any.len() > 0 {
                         if needs_and {
                             qb.push(" AND ");
                         }
                         qb.push("(");
-                        for (i, filter) in any.iter().enumerate() {
+                        for (i, filter) in any.into_iter().enumerate() {
                             if i > 0 {
                                 qb.push(" OR ");
                             }
@@ -590,14 +557,14 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl ::laser::sql::IntoSql for &#fields_filter_ident {
+        impl ::laser::sql::IntoSql for #fields_filter_ident {
             fn into_sql(self, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) {
                 self.into_sql(false, qb);
             }
         }
 
         impl #fields_filter_ident {
-            pub fn into_sql(&self, mut needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
+            pub fn into_sql(self, mut needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
                 #(#filter_fields_impl)*
                 return needs_and;
             }
@@ -636,42 +603,42 @@ pub fn derive_filter(input: TokenStream) -> TokenStream {
                 #name_with_filter::Eq(x) => {
                     qb.push(column_name);
                     qb.push(" = ");
-                    qb.push_bind(*x);
+                    qb.push_bind(x);
                 }
             },
             "<>" => quote! { 
                 #name_with_filter::Ne(x) => {
                     qb.push(column_name);
                     qb.push(" <> ");
-                    qb.push_bind(*x);
+                    qb.push_bind(x);
                 }
             },
             "<" => quote! { 
                 #name_with_filter::Lt(x) => {
                     qb.push(column_name);
                     qb.push(" < ");
-                    qb.push_bind(*x);
+                    qb.push_bind(x);
                 }
             },
             "<=" => quote! { 
                 #name_with_filter::Le(x) => {
                     qb.push(column_name);
                     qb.push(" <= ");
-                    qb.push_bind(*x);
+                    qb.push_bind(x);
                 }
             },
             ">" => quote! { 
                 #name_with_filter::Gt(x) => {
                     qb.push(column_name);
                     qb.push(" > ");
-                    qb.push_bind(*x);
+                    qb.push_bind(x);
                 }
             },
             ">=" => quote! { 
                 #name_with_filter::Ge(x) => {
                     qb.push(column_name);
                     qb.push(" >= ");
-                    qb.push_bind(*x);
+                    qb.push_bind(x);
                 }
             },
             _ => panic!("invalid filter attribute, must be one of '=', '<>', '<', '<=', '>', or '>='"),
@@ -690,7 +657,7 @@ pub fn derive_filter(input: TokenStream) -> TokenStream {
         }
 
         impl #name_with_filter {
-            pub fn into_sql(&self, column_name: &'static str, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) {
+            pub fn into_sql(self, column_name: &'static str, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) {
                 match self {
                     #(#match_arms)*
                 }
@@ -747,12 +714,58 @@ fn is_flatten(attrs: &Vec<Attribute>) -> bool {
     return false;
 }
 
+fn is_skip_filter(attrs: &Vec<Attribute>) -> bool {
+    for attr in attrs {
+        if attr.path().is_ident("laser") {
+            match &attr.meta {
+                Meta::List(meta_list) => {
+                    if let Some("skip_filter") = meta_list
+                        .tokens
+                        .clone()
+                        .into_iter()
+                        .next()
+                        .map(|t| t.to_string())
+                        .as_deref()
+                    {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    return false;
+}
+
 fn is_skip_sort_by(attrs: &Vec<Attribute>) -> bool {
     for attr in attrs {
         if attr.path().is_ident("laser") {
             match &attr.meta {
                 Meta::List(meta_list) => {
                     if let Some("skip_sort_by") = meta_list
+                        .tokens
+                        .clone()
+                        .into_iter()
+                        .next()
+                        .map(|t| t.to_string())
+                        .as_deref()
+                    {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    return false;
+}
+
+fn is_skip_graphql(attrs: &Vec<Attribute>) -> bool {
+    for attr in attrs {
+        if attr.path().is_ident("graphql") {
+            match &attr.meta {
+                Meta::List(meta_list) => {
+                    if let Some("skip") = meta_list
                         .tokens
                         .clone()
                         .into_iter()

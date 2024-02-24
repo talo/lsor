@@ -115,15 +115,15 @@ mod test {
 
     #[test]
     pub fn select_page_direct() {
-        let after = DateTimeCursor::encode(Utc::now());
-        let before = DateTimeCursor::encode(Utc::now());
+        let after = Some(DateTimeCursor::encode(&Utc::now()));
+        let before = Some(DateTimeCursor::encode(&Utc::now()));
         let first = 10;
         let last = 5;
 
         let mut qb = QueryBuilder::new("");
         let subquery = table("entities").select(all()).order_by(col("id").desc());
         select_page_items(
-            &subquery,
+            subquery,
             Pagination {
                 after,
                 before,
@@ -137,10 +137,10 @@ mod test {
 
         let mut qb = QueryBuilder::new("");
         select_page_info(
-            &subquery,
+            subquery,
             Cursor::DateTime,
-            DateTimeCursor::encode(Utc::now()),
-            DateTimeCursor::encode(Utc::now()),
+            DateTimeCursor::encode(&Utc::now()),
+            DateTimeCursor::encode(&Utc::now()),
         )
         .into_sql(&mut qb);
         assert_eq!(qb.into_sql(), "SELECT COUNT(*) AS total_count, COUNT(CASE WHEN (id) < ($1) THEN 1 END) > 0 AS has_prev_page, COUNT(CASE WHEN (id) > ($2) THEN 1 END) > 0 AS has_next_page FROM (SELECT * FROM entities ORDER BY id DESC) AS page_info");
@@ -148,8 +148,8 @@ mod test {
 
     #[test]
     pub fn select_page_indirect() {
-        let after = DateTimeCursor::encode(Utc::now());
-        let before = DateTimeCursor::encode(Utc::now());
+        let after = Some(DateTimeCursor::encode(&Utc::now()));
+        let before = Some(DateTimeCursor::encode(&Utc::now()));
         let first = 10;
         let last = 5;
 
@@ -160,7 +160,7 @@ mod test {
         )
         .select(all());
         select_page_items(
-            &subquery,
+            subquery,
             Pagination {
                 after,
                 before,
@@ -174,10 +174,10 @@ mod test {
 
         let mut qb = QueryBuilder::new("");
         select_page_info(
-            &subquery,
+            subquery,
             Cursor::DateTime,
-            DateTimeCursor::encode(Utc::now()),
-            DateTimeCursor::encode(Utc::now()),
+            DateTimeCursor::encode(&Utc::now()),
+            DateTimeCursor::encode(&Utc::now()),
         )
         .into_sql(&mut qb);
         assert_eq!(qb.into_sql(), "SELECT COUNT(*) AS total_count, COUNT(CASE WHEN (id) < ($1) THEN 1 END) > 0 AS has_prev_page, COUNT(CASE WHEN (id) > ($2) THEN 1 END) > 0 AS has_next_page FROM (SELECT * FROM (SELECT * FROM entities ORDER BY id DESC) AS entities_alias) AS page_info");

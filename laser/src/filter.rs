@@ -39,6 +39,14 @@ impl Filterable for Option<DateTime<Utc>> {
     type Filter = DateTimeFilter;
 }
 
+impl Filterable for Vec<String> {
+    type Filter = TagFilter;
+}
+
+impl Filterable for Option<Vec<String>> {
+    type Filter = TagFilter;
+}
+
 #[derive(Clone, Debug, OneofObject)]
 #[graphql(rename_fields = "snake_case")]
 pub enum I32Filter {
@@ -244,6 +252,22 @@ impl DateTimeFilter {
                 qb.push(column_name);
                 qb.push(" <= ");
                 qb.push_bind(*x);
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, OneofObject)]
+#[graphql(rename_fields = "snake_case")]
+pub enum TagFilter {
+    In(Vec<String>),
+}
+
+impl TagFilter {
+    pub fn into_sql(&self, _column_name: &'static str, _qb: &mut QueryBuilder<'_, Postgres>) {
+        match self {
+            Self::In(_xs) => {
+                todo!()
             }
         }
     }
