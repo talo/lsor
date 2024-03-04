@@ -5,9 +5,9 @@ use sqlx::{Postgres, QueryBuilder};
 use crate::sql::IntoSql;
 
 pub trait ToOrderBy {
-    type E;
+    type By;
 
-    fn to_order_by(&self) -> OrderBy<Self::E>;
+    fn to_order_by(&self) -> OrderBy<Self::By>;
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Enum, Eq, Hash, PartialEq, Serialize)]
@@ -54,13 +54,13 @@ pub struct OrderBy<E> {
 
 impl<E> ToOrderBy for OrderBy<E>
 where
-    E: Copy,
+    E: Clone,
 {
-    type E = E;
+    type By = E;
 
-    fn to_order_by(&self) -> OrderBy<Self::E> {
+    fn to_order_by(&self) -> OrderBy<Self::By> {
         Self {
-            expr: self.expr,
+            expr: self.expr.clone(),
             order: self.order,
         }
     }

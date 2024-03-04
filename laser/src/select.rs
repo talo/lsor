@@ -43,9 +43,9 @@ impl<T> ToOrderBy for FromClause<T>
 where
     T: ToOrderBy,
 {
-    type E = T::E;
+    type By = T::By;
 
-    fn to_order_by(&self) -> OrderBy<Self::E> {
+    fn to_order_by(&self) -> OrderBy<Self::By> {
         self.table_reference.to_order_by()
     }
 }
@@ -96,9 +96,9 @@ impl<E, FromItems> ToOrderBy for Select<E, FromItems>
 where
     FromItems: ToOrderBy,
 {
-    type E = FromItems::E;
+    type By = FromItems::By;
 
-    fn to_order_by(&self) -> OrderBy<Self::E> {
+    fn to_order_by(&self) -> OrderBy<Self::By> {
         self.from_items.to_order_by()
     }
 }
@@ -168,13 +168,13 @@ where
 
 impl<S, E> ToOrderBy for Ordered<S, E>
 where
-    E: Copy,
+    E: Clone,
 {
-    type E = E;
+    type By = E;
 
-    fn to_order_by(&self) -> OrderBy<Self::E> {
+    fn to_order_by(&self) -> OrderBy<Self::By> {
         OrderBy {
-            expr: self.order_by.expr,
+            expr: self.order_by.expr.clone(),
             order: self.order_by.order,
         }
     }

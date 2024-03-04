@@ -4,9 +4,9 @@ use laser::{
     sql::IntoSql,
     table::Table,
     upsert::{upsert, upsert_into},
-    DateTimeCursor, DateTimeFilter, Filterable, Laser, Order, Pagination, StringFilter, ToOrderBy,
+    DateTimeCursor, Filterable, Laser, Order, Pagination, ToOrderBy,
 };
-use sqlx::{QueryBuilder, Row as _, Type};
+use sqlx::{QueryBuilder, Type};
 use uuid::Uuid;
 
 #[derive(Clone, Laser, SimpleObject)]
@@ -27,17 +27,6 @@ pub enum AccountTier {
     Pro,
     Startup,
     Enterprise,
-}
-
-impl IntoSql for AccountTier {
-    fn into_sql(self, qb: &mut QueryBuilder<'_, sqlx::Postgres>) {
-        match self {
-            AccountTier::Free => "free".into_sql(qb),
-            AccountTier::Pro => "pro".into_sql(qb),
-            AccountTier::Startup => "startup".into_sql(qb),
-            AccountTier::Enterprise => "enterprise".into_sql(qb),
-        }
-    }
 }
 
 #[derive(Clone, Laser, SimpleObject)]

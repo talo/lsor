@@ -84,7 +84,7 @@ impl Cursor {
             ),
             x => {
                 return Err(sqlx::Error::Decode(
-                    format!("invalid cursor type: {}", x).into(),
+                    format!("invalid cursor type during inference: {}", x).into(),
                 ))
             }
         })
@@ -101,6 +101,7 @@ impl Cursor {
 
     pub fn encode(literal: &Literal) -> String {
         match literal {
+            Literal::Bool(_) => panic!("invalid cursor type: bool"),
             Literal::I32(v) => I32Cursor::encode(v),
             Literal::String(v) => StringCursor::encode(v),
             Literal::Uuid(v) => UuidCursor::encode(v),

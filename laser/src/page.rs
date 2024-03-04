@@ -35,6 +35,7 @@ pub fn select_page_items<O>(subquery: O, pagination: Pagination) -> SelectPageIt
     }
 }
 
+#[derive(Clone)]
 pub struct SelectPageItems<O> {
     pub subquery: O,
     pub pagination: Pagination,
@@ -43,7 +44,7 @@ pub struct SelectPageItems<O> {
 impl<O> IntoSql for SelectPageItems<O>
 where
     O: ToOrderBy + IntoSql,
-    O::E: Copy + IntoSql,
+    O::By: Clone + IntoSql,
 {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
         let order_by = self.subquery.to_order_by();
@@ -57,14 +58,14 @@ where
                     .select(all())
                     .filter_by(and(
                         gt(
-                            order_by_expr,
+                            order_by_expr.clone(),
                             self.pagination
                                 .after
                                 .map(|v| self.pagination.cursor.decode(&v))
                                 .unwrap_or(self.pagination.cursor.min()),
                         ),
                         lt(
-                            order_by_expr,
+                            order_by_expr.clone(),
                             self.pagination
                                 .before
                                 .map(|v| self.pagination.cursor.decode(&v))
@@ -72,7 +73,7 @@ where
                         ),
                     ))
                     .order_by(OrderBy {
-                        expr: order_by_expr,
+                        expr: order_by_expr.clone(),
                         order,
                     })
                     .limit(self.pagination.first),
@@ -80,13 +81,13 @@ where
             )
             .select(all())
             .order_by(OrderBy {
-                expr: order_by_expr,
+                expr: order_by_expr.clone(),
                 order: order_flipped,
             })
             .limit(self.pagination.last),
             "page_items",
         )
-        .select(concat(all(), alias(order_by_expr, "cursor")))
+        .select(concat(all(), alias(order_by_expr.clone(), "cursor")))
         .order_by(OrderBy {
             expr: order_by_expr,
             order,
@@ -109,6 +110,7 @@ pub fn select_page_info<O>(
     }
 }
 
+#[derive(Clone)]
 pub struct SelectPageInfo<O> {
     pub subquery: O,
     pub cursor: Cursor,
@@ -119,11 +121,11 @@ pub struct SelectPageInfo<O> {
 impl<O> IntoSql for SelectPageInfo<O>
 where
     O: ToOrderBy + IntoSql,
-    O::E: Copy + IntoSql,
+    O::By: Clone + IntoSql,
 {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
         let order_by = self.subquery.to_order_by();
-        let after_cond = gt(order_by.expr, self.cursor.decode(&self.start));
+        let after_cond = gt(order_by.expr.clone(), self.cursor.decode(&self.start));
         let before_cond = lt(order_by.expr, self.cursor.decode(&self.end));
         qb.push("SELECT COUNT(*) AS total_count, COUNT(CASE WHEN ");
         before_cond.into_sql(qb);

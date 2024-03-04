@@ -207,32 +207,35 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
     let filter_fields = match &ast.data {
         // Struct
         Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named.named.iter().map(|field| {
+            Fields::Named(named) => named.named.iter().filter_map(|field| {
                 let field_name = field.ident.clone().unwrap();
                 let field_ty = &field.ty;
                 let field_flatten = is_flatten(&field.attrs);
+                if is_skip_filter(&field.attrs) {
+                    return None;
+                }
                 if !field_flatten {
                     if is_skip_graphql(&field.attrs) {
-                        quote! {
+                        Some(quote! {
                             #[graphql(skip)]
                             pub #field_name: ::std::option::Option<<#field_ty as ::laser::filter::Filterable>::Filter>
-                        }
+                        })
                     } else {
-                        quote! {
+                        Some(quote! {
                             pub #field_name: ::std::option::Option<<#field_ty as ::laser::filter::Filterable>::Filter>
-                        }
+                        })
                     }
                 } else {
                     if is_skip_graphql(&field.attrs) {
-                        quote! {
+                        Some(quote! {
                             #[graphql(flatten, skip)]
                             pub #field_name: <#field_ty as ::laser::filter::Filterable>::Filter
-                        }
+                        })
                     } else {
-                        quote! {
+                        Some(quote! {
                             #[graphql(flatten)]
                             pub #field_name: <#field_ty as ::laser::filter::Filterable>::Filter
-                        }
+                        })
                     }
                 }
             }),
@@ -246,11 +249,14 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
     let filter_fields_impl = match &ast.data {
         // Struct
         Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named.named.iter().map(|field| {
+            Fields::Named(named) => named.named.iter().filter_map(|field| {
                 let field_name = field.ident.clone().unwrap();
                 let field_flatten = is_flatten(&field.attrs);
+                if is_skip_filter(&field.attrs) {
+                    return None;
+                }
                 if !field_flatten {
-                    quote! {
+                    Some(quote! {
                         if let Some(filter) = self.#field_name {
                             if needs_and {
                                 qb.push(" AND ");
@@ -258,11 +264,11 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                             filter.into_sql(stringify!(#field_name), qb);
                             needs_and = true;
                         }
-                    }
+                    })
                 } else {
-                    quote! {
+                    Some(quote! {
                         let mut needs_and = self.#field_name.into_sql(needs_and, qb);
-                    }
+                    })
                 }
             }),
             Fields::Unnamed(..) => {
@@ -275,13 +281,16 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
     let filter_fields_builder_impl = match &ast.data {
         // Struct
         Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named.named.iter().map(|field| {
+            Fields::Named(named) => named.named.iter().filter_map(|field| {
                 let field_name = field.ident.clone().unwrap();
                 let with_field_name = concatenate_idents(&Ident::new("with_", Span::call_site()), &field_name);
                 let field_ty = &field.ty;
                 let field_flatten = is_flatten(&field.attrs);
+                if is_skip_filter(&field.attrs) {
+                    return None;
+                }
                 if !field_flatten {
-                    quote! {
+                    Some(quote! {
                         pub fn #field_name(#field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> #fields_filter_ident {
                             #fields_filter_ident::#field_name(#field_name)
                         }
@@ -295,9 +304,9 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                                 ..self
                             }
                         }
-                    }
+                    })
                 } else {
-                    quote! {
+                    Some(quote! {
                         pub fn #field_name(#field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> #fields_filter_ident {
                             #fields_filter_ident::#field_name(#field_name)
                         }
@@ -311,7 +320,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                                 ..self
                             }
                         }
-                    }
+                    })
                 }
             }),
             Fields::Unnamed(..) => {
@@ -324,13 +333,16 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
     let filter_fields_builder_impl_inner = match &ast.data {
         // Struct
         Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named.named.iter().map(|field| {
+            Fields::Named(named) => named.named.iter().filter_map(|field| {
                 let field_name = field.ident.clone().unwrap();
                 let with_field_name = concatenate_idents(&Ident::new("with_", Span::call_site()), &field_name);
                 let field_ty = &field.ty;
                 let field_flatten = is_flatten(&field.attrs);
+                if is_skip_filter(&field.attrs) {
+                    return None;
+                }
                 if !field_flatten {
-                    quote! {
+                    Some(quote! {
                         pub fn #field_name(#field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> Self {
                             Self {
                                 #field_name: Some(#field_name.into()),
@@ -344,9 +356,9 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                                 ..self
                             }
                         }
-                    }
+                    })
                 } else {
-                    quote! {
+                    Some(quote! {
                         pub fn #field_name(#field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> Self {
                             Self {
                                 #field_name: #field_name.into(),
@@ -360,7 +372,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                                 ..self
                             }
                         }
-                    }
+                    })
                 }
             }),
             Fields::Unnamed(..) => {
@@ -394,6 +406,8 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
 
         impl <'r> #impl_generics ::sqlx::FromRow<'r, ::sqlx::postgres::PgRow> for #name #ty_generics #where_clause {
             fn from_row(row: &'r ::sqlx::postgres::PgRow) -> ::sqlx::Result<Self> {
+                use ::sqlx::Row;
+
                 Ok(Self {
                     #(#try_froms,)*
                 })
@@ -401,7 +415,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         }
 
         impl #impl_generics ::laser::column::Columns for #name #ty_generics #where_clause {
-            fn columns() -> impl ::std::iter::Iterator<Item = (::laser::column::ColumnName, bool)> {
+            fn columns() -> impl ::std::iter::Iterator<Item = (::laser::column::ColumnName, bool)> {                
                 #flattened_columns
                 .chain([
                     #(#columns,)*
@@ -409,6 +423,8 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
             }
 
             fn into_column_values(self, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) {
+                use ::laser::sql::IntoSql;
+
                 #(#into_column_values;)*
             }
         }
@@ -432,9 +448,9 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         }
         
         impl ::laser::ord::ToOrderBy for #sort_by_ident {
-            type E = ::laser::column::ColumnName;
+            type By = ::laser::column::ColumnName;
         
-            fn to_order_by(&self) -> ::laser::ord::OrderBy<Self::E> {
+            fn to_order_by(&self) -> ::laser::ord::OrderBy<Self::By> {
                 match self {
                     #(#sort_by_match_arms)*
                 }
@@ -456,10 +472,13 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
             pub fields: #fields_filter_ident,
         }
 
-        impl ::laser::sql::IntoSql for &#filter_ident {
+        impl ::laser::sql::IntoSql for #filter_ident {
             fn into_sql(self, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) {
+                use ::laser::sql::IntoSql;
+
                 self.fields
-                    .into_sql(self.any.into_sql(self.all.into_sql(false, qb), qb), qb);
+                    .clone()
+                    .into_sql(self.any.clone().into_sql(self.all.clone().into_sql(false, qb), qb), qb);
             }
         }
 
@@ -489,6 +508,8 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
 
         impl #all_filter_ident  {
             pub fn into_sql(self, needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
+                use ::laser::sql::IntoSql;
+
                 if let Some(all) = self.all {
                     if all.len() > 0 {
                         if needs_and {
@@ -519,6 +540,8 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
 
         impl #any_filter_ident {
             pub fn into_sql(self, needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
+                use ::laser::sql::IntoSql;
+
                 if let Some(any) = self.any {
                     if any.len() > 0 {
                         if needs_and {
@@ -565,6 +588,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
 
         impl #fields_filter_ident {
             pub fn into_sql(self, mut needs_and: bool, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) -> bool {
+                use ::laser::sql::IntoSql;
                 #(#filter_fields_impl)*
                 return needs_and;
             }
@@ -658,6 +682,8 @@ pub fn derive_filter(input: TokenStream) -> TokenStream {
 
         impl #name_with_filter {
             pub fn into_sql(self, column_name: &'static str, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) {
+                use ::laser::sql::IntoSql;
+
                 match self {
                     #(#match_arms)*
                 }
@@ -673,13 +699,12 @@ fn is_pk(attrs: &Vec<Attribute>) -> bool {
         if attr.path().is_ident("laser") {
             match &attr.meta {
                 Meta::List(meta_list) => {
-                    if let Some("primary_key") = meta_list
+                    if meta_list
                         .tokens
                         .clone()
                         .into_iter()
-                        .next()
-                        .map(|t| t.to_string())
-                        .as_deref()
+                        .find(|t| "primary_key" == t.to_string())
+                        .is_some()
                     {
                         return true;
                     }
@@ -696,13 +721,12 @@ fn is_flatten(attrs: &Vec<Attribute>) -> bool {
         if attr.path().is_ident("laser") {
             match &attr.meta {
                 Meta::List(meta_list) => {
-                    if let Some("flatten") = meta_list
+                    if meta_list
                         .tokens
                         .clone()
                         .into_iter()
-                        .next()
-                        .map(|t| t.to_string())
-                        .as_deref()
+                        .find(|t| "flatten" == t.to_string())
+                        .is_some()
                     {
                         return true;
                     }
@@ -719,13 +743,12 @@ fn is_skip_filter(attrs: &Vec<Attribute>) -> bool {
         if attr.path().is_ident("laser") {
             match &attr.meta {
                 Meta::List(meta_list) => {
-                    if let Some("skip_filter") = meta_list
+                    if meta_list
                         .tokens
                         .clone()
                         .into_iter()
-                        .next()
-                        .map(|t| t.to_string())
-                        .as_deref()
+                        .find(|t| "skip_filter" == t.to_string())
+                        .is_some()
                     {
                         return true;
                     }
@@ -742,13 +765,12 @@ fn is_skip_sort_by(attrs: &Vec<Attribute>) -> bool {
         if attr.path().is_ident("laser") {
             match &attr.meta {
                 Meta::List(meta_list) => {
-                    if let Some("skip_sort_by") = meta_list
+                    if meta_list
                         .tokens
                         .clone()
                         .into_iter()
-                        .next()
-                        .map(|t| t.to_string())
-                        .as_deref()
+                        .find(|t| "skip_sort_by" == t.to_string())
+                        .is_some()
                     {
                         return true;
                     }
@@ -765,13 +787,12 @@ fn is_skip_graphql(attrs: &Vec<Attribute>) -> bool {
         if attr.path().is_ident("graphql") {
             match &attr.meta {
                 Meta::List(meta_list) => {
-                    if let Some("skip") = meta_list
+                    if meta_list
                         .tokens
                         .clone()
                         .into_iter()
-                        .next()
-                        .map(|t| t.to_string())
-                        .as_deref()
+                        .find(|t| "skip" == t.to_string())
+                        .is_some()
                     {
                         return true;
                     }

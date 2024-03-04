@@ -48,15 +48,15 @@ pub async fn load_page<'c, E, F, S, R>(
 ) -> sqlx::Result<Connection<String, R, TotalCount>>
 where
     E: Copy + Executor<'c, Database = Postgres>,
-    F: Copy + IntoSql,
-    S: Copy + IntoSql,
+    F: Clone + IntoSql,
+    S: Clone + IntoSql,
     for<'r> R: FromRow<'r, PgRow> + OutputType + Table,
 {
     let cursor = pagination.cursor;
     let subquery = R::table().select(all()).filter_by(filter).order_by(sort);
 
     let mut qb = QueryBuilder::default();
-    select_page_items(subquery, pagination).into_sql(&mut qb);
+    select_page_items(subquery.clone(), pagination).into_sql(&mut qb);
     let rows = qb.build().fetch_all(executor).await?;
     let edges = rows
         .into_iter()
