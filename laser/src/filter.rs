@@ -7,11 +7,14 @@ pub trait Filterable {
     type Filter;
 }
 
-impl Filterable for i32 {
-    type Filter = I32Filter;
+impl<T> Filterable for Option<T>
+where
+    T: Filterable,
+{
+    type Filter = <T as Filterable>::Filter;
 }
 
-impl Filterable for Option<i32> {
+impl Filterable for i32 {
     type Filter = I32Filter;
 }
 
@@ -19,15 +22,7 @@ impl Filterable for String {
     type Filter = StringFilter;
 }
 
-impl Filterable for Option<String> {
-    type Filter = StringFilter;
-}
-
 impl Filterable for Uuid {
-    type Filter = UuidFilter;
-}
-
-impl Filterable for Option<Uuid> {
     type Filter = UuidFilter;
 }
 
@@ -35,15 +30,7 @@ impl Filterable for DateTime<Utc> {
     type Filter = DateTimeFilter;
 }
 
-impl Filterable for Option<DateTime<Utc>> {
-    type Filter = DateTimeFilter;
-}
-
 impl Filterable for Vec<String> {
-    type Filter = TagFilter;
-}
-
-impl Filterable for Option<Vec<String>> {
     type Filter = TagFilter;
 }
 
