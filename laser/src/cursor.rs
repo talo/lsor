@@ -10,13 +10,16 @@ pub trait Iterable {
     fn cursor() -> Cursor;
 }
 
-impl Iterable for i32 {
+impl<T> Iterable for Option<T>
+where
+    T: Iterable,
+{
     fn cursor() -> Cursor {
-        Cursor::I32
+        <T as Iterable>::cursor()
     }
 }
 
-impl Iterable for Option<i32> {
+impl Iterable for i32 {
     fn cursor() -> Cursor {
         Cursor::I32
     }
@@ -28,31 +31,13 @@ impl Iterable for String {
     }
 }
 
-impl Iterable for Option<String> {
-    fn cursor() -> Cursor {
-        Cursor::String
-    }
-}
-
 impl Iterable for Uuid {
     fn cursor() -> Cursor {
         Cursor::Uuid
     }
 }
 
-impl Iterable for Option<Uuid> {
-    fn cursor() -> Cursor {
-        Cursor::Uuid
-    }
-}
-
 impl Iterable for DateTime<Utc> {
-    fn cursor() -> Cursor {
-        Cursor::DateTime
-    }
-}
-
-impl Iterable for Option<DateTime<Utc>> {
     fn cursor() -> Cursor {
         Cursor::DateTime
     }
