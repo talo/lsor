@@ -67,7 +67,7 @@ impl<ExprList, FromItems> Select<ExprList, FromItems> {
     pub fn order_by<E>(self, order_by: OrderBy<E>) -> Ordered<Self, E> {
         Ordered {
             selection: self,
-            order_by: order_by.into(),
+            order_by,
         }
     }
 
@@ -113,7 +113,7 @@ impl<S, C> Filtered<S, C> {
     pub fn order_by<E>(self, order_by: OrderBy<E>) -> Ordered<Self, E> {
         Ordered {
             selection: self,
-            order_by: order_by.into(),
+            order_by,
         }
     }
 
@@ -207,25 +207,5 @@ pub struct All;
 impl IntoSql for All {
     fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
         qb.push("*");
-    }
-}
-
-pub fn count<E>(expr: E) -> Count<E> {
-    Count { expr }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Count<E> {
-    expr: E,
-}
-
-impl<E> IntoSql for Count<E>
-where
-    E: IntoSql,
-{
-    fn into_sql(self, qb: &mut QueryBuilder<'_, Postgres>) {
-        qb.push("COUNT(");
-        self.expr.into_sql(qb);
-        qb.push(")");
     }
 }

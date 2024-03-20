@@ -807,63 +807,57 @@ fn is_skip_graphql(attrs: &Vec<Attribute>) -> bool {
 fn is_table(attrs: &Vec<Attribute>) -> Option<String> {
     for attr in attrs {
         if attr.path().is_ident("laser") {
-            match &attr.meta {
-                Meta::List(meta_list) => {
-                    let mut meta_list_token_iter = meta_list.tokens.clone().into_iter();
-                    match (
-                        meta_list_token_iter
-                            .next()
-                            .map(|t| t.to_string())
-                            .as_deref(),
-                        meta_list_token_iter
-                            .next()
-                            .map(|t| t.to_string())
-                            .as_deref(),
-                        meta_list_token_iter.next().map(|t| t.to_string()),
-                    ) {
-                        (Some("table"), Some("="), Some(table_name))
-                            if table_name.starts_with('\"') && table_name.ends_with('\"') =>
-                        {
-                            return Some(table_name[1..table_name.len() - 1].to_owned());
-                        }
-                        _ => {}
+            if let Meta::List(meta_list) = &attr.meta {
+                let mut meta_list_token_iter = meta_list.tokens.clone().into_iter();
+                match (
+                    meta_list_token_iter
+                        .next()
+                        .map(|t| t.to_string())
+                        .as_deref(),
+                    meta_list_token_iter
+                        .next()
+                        .map(|t| t.to_string())
+                        .as_deref(),
+                    meta_list_token_iter.next().map(|t| t.to_string()),
+                ) {
+                    (Some("table"), Some("="), Some(table_name))
+                        if table_name.starts_with('\"') && table_name.ends_with('\"') =>
+                    {
+                        return Some(table_name[1..table_name.len() - 1].to_owned());
                     }
+                    _ => {}
                 }
-                _ => {}
             }
         }
     }
-    return None;
+    None
 }
 
 
 fn cmp_attrs(attrs: &Vec<Attribute>) -> Vec<String> {
     for attr in attrs {
         if attr.path().is_ident("laser") {
-            match &attr.meta {
-                Meta::List(meta_list) => {
-                    return meta_list.tokens.clone().into_iter().filter_map(|t| {
-                        let cmp = t.to_string();
-                        if cmp.starts_with('\"') && cmp.ends_with('\"') {
-                            match cmp.as_str() {
-                                "\"=\"" => Some("=".to_string()),
-                                "\"<>\"" => Some("<>".to_string()),
-                                "\"<\"" => Some("<".to_string()),
-                                "\"<=\"" => Some("<=".to_string()),
-                                "\">\"" => Some(">".to_string()),
-                                "\">=\"" => Some(">=".to_string()),
-                                _ => None,
-                            }
-                        } else {
-                            None
+            if let Meta::List(meta_list) =  &attr.meta {
+                return meta_list.tokens.clone().into_iter().filter_map(|t| {
+                    let cmp = t.to_string();
+                    if cmp.starts_with('\"') && cmp.ends_with('\"') {
+                        match cmp.as_str() {
+                            "\"=\"" => Some("=".to_string()),
+                            "\"<>\"" => Some("<>".to_string()),
+                            "\"<\"" => Some("<".to_string()),
+                            "\"<=\"" => Some("<=".to_string()),
+                            "\">\"" => Some(">".to_string()),
+                            "\">=\"" => Some(">=".to_string()),
+                            _ => None,
                         }
-                    }).collect();
-                }
-                _ => {}
+                    } else {
+                        None
+                    }
+                }).collect();
             }
         }
     }
-    return vec![];
+    vec![]
 }
 
 fn concatenate_idents(ident1: &Ident, ident2: &Ident) -> Ident {

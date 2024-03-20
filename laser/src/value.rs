@@ -3,10 +3,7 @@ use sqlx::{Postgres, QueryBuilder};
 use crate::sql::IntoSql;
 
 pub fn alias<E>(expr: E, alias: &'static str) -> Alias<E> {
-    Alias {
-        expr,
-        alias: alias.into(),
-    }
+    Alias { expr, alias }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

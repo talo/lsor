@@ -52,8 +52,28 @@ where
     S: Clone + IntoSql,
     for<'r> R: FromRow<'r, PgRow> + OutputType + Table,
 {
+    load_page_with_expr_list(executor, all(), filter, sort, pagination).await
+}
+
+pub async fn load_page_with_expr_list<'c, E, EL, F, S, R>(
+    executor: E,
+    expr_list: EL,
+    filter: F,
+    sort: OrderBy<S>,
+    pagination: Pagination,
+) -> sqlx::Result<Connection<String, R, TotalCount>>
+where
+    E: Copy + Executor<'c, Database = Postgres>,
+    EL: Clone + IntoSql,
+    F: Clone + IntoSql,
+    S: Clone + IntoSql,
+    for<'r> R: FromRow<'r, PgRow> + OutputType + Table,
+{
     let cursor = pagination.cursor;
-    let subquery = R::table().select(all()).filter_by(filter).order_by(sort);
+    let subquery = R::table()
+        .select(expr_list)
+        .filter_by(filter)
+        .order_by(sort);
 
     let mut qb = QueryBuilder::default();
     select_page_items(subquery.clone(), pagination).into_sql(&mut qb);

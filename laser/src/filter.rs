@@ -137,7 +137,7 @@ impl StringFilter {
             Self::In(xs) => {
                 qb.push(column_name);
                 qb.push(" IN (");
-                for (i, x) in xs.into_iter().enumerate() {
+                for (i, x) in xs.iter().enumerate() {
                     if i > 0 {
                         qb.push(", ");
                     }
@@ -148,7 +148,7 @@ impl StringFilter {
             Self::NotIn(xs) => {
                 qb.push(column_name);
                 qb.push(" NOT IN (");
-                for (i, x) in xs.into_iter().enumerate() {
+                for (i, x) in xs.iter().enumerate() {
                     if i > 0 {
                         qb.push(", ");
                     }
@@ -184,7 +184,7 @@ impl UuidFilter {
             Self::In(xs) => {
                 qb.push(column_name);
                 qb.push(" IN (");
-                for (i, x) in xs.into_iter().enumerate() {
+                for (i, x) in xs.iter().enumerate() {
                     if i > 0 {
                         qb.push(", ");
                     }

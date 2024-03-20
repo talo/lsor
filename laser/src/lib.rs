@@ -1,3 +1,4 @@
+pub mod agg;
 pub mod column;
 pub mod cond;
 pub mod cursor;
@@ -13,6 +14,7 @@ pub mod table;
 pub mod upsert;
 pub mod value;
 
+pub use agg::*;
 pub use column::*;
 pub use cond::*;
 pub use cursor::*;

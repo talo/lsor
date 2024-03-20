@@ -137,7 +137,7 @@ impl From<DateTimeCursor> for Cursor {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct I32Cursor;
 
 impl I32Cursor {
@@ -150,7 +150,7 @@ impl I32Cursor {
             .decode(encoded)
             .ok()
             .and_then(|buf| buf.as_slice().try_into().ok())
-            .map(|buf| i32::from_be_bytes(buf))
+            .map(i32::from_be_bytes)
             .unwrap_or_else(|| {
                 tracing::warn!("invalid i32 cursor '{}'", encoded);
                 Self::min()
@@ -170,7 +170,7 @@ impl I32Cursor {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct StringCursor;
 
 impl StringCursor {
@@ -203,7 +203,7 @@ impl StringCursor {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct UuidCursor;
 
 impl UuidCursor {
@@ -236,7 +236,7 @@ impl UuidCursor {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct DateTimeCursor;
 
 impl DateTimeCursor {
