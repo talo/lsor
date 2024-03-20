@@ -251,10 +251,12 @@ pub enum TagFilter {
 }
 
 impl TagFilter {
-    pub fn into_sql(&self, _column_name: &'static str, _qb: &mut QueryBuilder<'_, Postgres>) {
+    pub fn into_sql(&self, column_name: &'static str, qb: &mut QueryBuilder<'_, Postgres>) {
         match self {
-            Self::In(_xs) => {
-                todo!()
+            Self::In(xs) => {
+                qb.push(column_name);
+                qb.push(" @> ");
+                qb.push_bind(xs.clone());
             }
         }
     }
