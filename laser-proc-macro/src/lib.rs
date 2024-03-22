@@ -34,50 +34,24 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
             Fields::Named(named) => named
                 .named
                 .iter()
-                .filter_map(|field| {
+                .enumerate()
+                .map(|(i, field)| {
                     let field_flatten = is_flatten(&field.attrs);
+                    let postfix = if i <  named.named.len() - 1 {
+                        quote! { .chain }
+                    } else {
+                        quote! { }
+                    };
                     if field_flatten {
                         let field_type = &field.ty;
-                        Some(quote! { <#field_type as ::laser::column::Columns>::columns() })
+                        quote! { (<#field_type as ::laser::column::Columns>::columns().into_iter()) #postfix }
                     } else {
-                        None
+                        let field_name = field.ident.as_ref().unwrap();
+                        let field_pk = is_pk(&field.attrs);
+                        quote! { (Some((::laser::column::col(stringify!(#field_name)), #field_pk)).into_iter()) #postfix }
                     }
                 })
                 .collect::<Vec<_>>(),
-            Fields::Unnamed(..) => {
-                panic!("Laser cannot be derived for structs with unnamed fields")
-            }
-            Fields::Unit => panic!("Laser cannot be derived for unit-structs"),
-        },
-        _ => panic!("Laser cannot be derived for non-structs"),
-    };
-    let flattened_columns = if flattened_columns.len() > 0 {
-        quote! {
-            [
-                #(#flattened_columns,)*
-            ]
-            .into_iter()
-            .flatten()
-        }
-    } else {
-        quote! {
-            ::std::iter::empty()
-        }
-    };
-
-    let columns = match &ast.data {
-        // Struct
-        Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named.named.iter().filter_map(|field| {
-                let field_name = field.ident.clone().unwrap();
-                let field_flatten = is_flatten(&field.attrs);
-                if !field_flatten {
-                    let field_pk = is_pk(&field.attrs);
-                    Some(quote! { (::laser::column::col(stringify!(#field_name)), #field_pk) })
-                } else {
-                    None
-                }
-            }),
             Fields::Unnamed(..) => {
                 panic!("Laser cannot be derived for structs with unnamed fields")
             }
@@ -89,13 +63,18 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
     let into_column_values = match &ast.data {
         // Struct
         Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => named.named.iter().map(|field| {
+            Fields::Named(named) => named.named.iter().enumerate().map(|(i, field)| {
                 let field_flatten = is_flatten(&field.attrs);
                 let field_name = field.ident.clone().unwrap();
-                if field_flatten {
-                    quote! { self.#field_name.into_column_values(qb) }
+                let infix = if i < named.named.len() - 1 {
+                    quote! { qb.push(", "); }
                 } else {
-                    quote! { self.#field_name.into_sql(qb) }
+                    quote! {}
+                };
+                if field_flatten {
+                    quote! { self.#field_name.into_column_values(qb); #infix }
+                } else {
+                    quote! { self.#field_name.into_sql(qb); #infix }
                 }
             }).collect::<Vec<_>>(),
             Fields::Unnamed(..) => {
@@ -416,10 +395,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
 
         impl #impl_generics ::laser::column::Columns for #name #ty_generics #where_clause {
             fn columns() -> impl ::std::iter::Iterator<Item = (::laser::column::ColumnName, bool)> {                
-                #flattened_columns
-                .chain([
-                    #(#columns,)*
-                ])
+                #(#flattened_columns)*
             }
 
             fn into_column_values(self, qb: &mut ::sqlx::QueryBuilder<'_, ::sqlx::Postgres>) {
