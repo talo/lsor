@@ -1,6 +1,6 @@
 use async_graphql::{EmptyMutation, EmptySubscription, Enum, Object, Schema, SimpleObject};
 use chrono::{DateTime, Utc};
-use laser::{
+use laser::old::{
     sql::IntoSql,
     table::Table,
     upsert::{upsert, upsert_into},

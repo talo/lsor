@@ -1,7 +1,39 @@
 use async_graphql::OneofObject;
 use chrono::{DateTime, Utc};
-use sqlx::{Postgres, QueryBuilder};
 use uuid::Uuid;
+
+use crate::{
+    driver::{Driver, PushPrql},
+    sort::{Order, Sorted},
+    take::Taken,
+};
+
+pub struct Filtered<Query, Filter> {
+    pub query: Query,
+    pub filter: Filter,
+}
+
+impl<Query, Filter> Filtered<Query, Filter> {
+    pub fn sort<By>(&self, order: Order<By>) -> Sorted<&Self, By> {
+        Sorted { query: self, order }
+    }
+
+    pub fn take(&self, n: usize) -> Taken<&Self> {
+        Taken { query: self, n }
+    }
+}
+
+impl<Query, Filter> PushPrql for Filtered<Query, Filter>
+where
+    Query: PushPrql,
+    Filter: PushPrql,
+{
+    fn push_to_driver(&self, driver: &mut Driver) {
+        self.query.push_to_driver(driver);
+        driver.push("\nfilter ");
+        self.filter.push_to_driver(driver);
+    }
+}
 
 pub trait Filterable {
     type Filter;
@@ -46,37 +78,37 @@ pub enum I32Filter {
 }
 
 impl I32Filter {
-    pub fn into_sql(self, column_name: &'static str, qb: &mut QueryBuilder<'_, Postgres>) {
+    pub fn push_to_driver(self, column_name: &'static str, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
-                qb.push(column_name);
-                qb.push(" = ");
-                qb.push_bind(x);
+                driver.push(column_name);
+                driver.push(" == ");
+                driver.push_bind(x);
             }
             Self::Ne(x) => {
-                qb.push(column_name);
-                qb.push(" <> ");
-                qb.push_bind(x);
+                driver.push(column_name);
+                driver.push(" != ");
+                driver.push_bind(x);
             }
             Self::Gt(x) => {
-                qb.push(column_name);
-                qb.push(" > ");
-                qb.push_bind(x);
+                driver.push(column_name);
+                driver.push(" > ");
+                driver.push_bind(x);
             }
             Self::Ge(x) => {
-                qb.push(column_name);
-                qb.push(" >= ");
-                qb.push_bind(x);
+                driver.push(column_name);
+                driver.push(" >= ");
+                driver.push_bind(x);
             }
             Self::Lt(x) => {
-                qb.push(column_name);
-                qb.push(" < ");
-                qb.push_bind(x);
+                driver.push(column_name);
+                driver.push(" < ");
+                driver.push_bind(x);
             }
             Self::Le(x) => {
-                qb.push(column_name);
-                qb.push(" <= ");
-                qb.push_bind(x);
+                driver.push(column_name);
+                driver.push(" <= ");
+                driver.push_bind(x);
             }
         }
     }
@@ -97,64 +129,68 @@ pub enum StringFilter {
 }
 
 impl StringFilter {
-    pub fn into_sql(&self, column_name: &'static str, qb: &mut QueryBuilder<'_, Postgres>) {
+    pub fn push_to_driver(&self, column_name: &'static str, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
-                qb.push(column_name);
-                qb.push(" = ");
-                qb.push_bind(x.clone());
+                driver.push(column_name);
+                driver.push(" == ");
+                driver.push_bind(x);
             }
             Self::Ne(x) => {
-                qb.push(column_name);
-                qb.push(" <> ");
-                qb.push_bind(x.clone());
+                driver.push(column_name);
+                driver.push(" != ");
+                driver.push_bind(x);
             }
             Self::Gt(x) => {
-                qb.push(column_name);
-                qb.push(" > ");
-                qb.push_bind(x.clone());
+                driver.push(column_name);
+                driver.push(" > ");
+                driver.push_bind(x);
             }
             Self::Ge(x) => {
-                qb.push(column_name);
-                qb.push(" >= ");
-                qb.push_bind(x.clone());
+                driver.push(column_name);
+                driver.push(" >= ");
+                driver.push_bind(x);
             }
             Self::Lt(x) => {
-                qb.push(column_name);
-                qb.push(" < ");
-                qb.push_bind(x.clone());
+                driver.push(column_name);
+                driver.push(" < ");
+                driver.push_bind(x);
             }
             Self::Le(x) => {
-                qb.push(column_name);
-                qb.push(" <= ");
-                qb.push_bind(x.clone());
+                driver.push(column_name);
+                driver.push(" <= ");
+                driver.push_bind(x);
             }
             Self::Like(x) => {
-                qb.push(column_name);
-                qb.push(" LIKE ");
-                qb.push_bind(x.clone());
+                driver.push("s\"");
+                driver.push(column_name);
+                driver.push(" LIKE ");
+                driver.push_bind(x);
+                driver.push('\"');
             }
             Self::In(xs) => {
-                qb.push(column_name);
-                qb.push(" IN (");
+                driver.push("s\"");
+                driver.push(column_name);
+                driver.push(" IN (");
                 for (i, x) in xs.iter().enumerate() {
                     if i > 0 {
-                        qb.push(", ");
+                        driver.push(", ");
                     }
-                    qb.push_bind(x.clone());
+                    driver.push_bind(x);
                 }
-                qb.push(")");
+                driver.push(")\"");
             }
             Self::NotIn(xs) => {
-                qb.push(column_name);
-                qb.push(" NOT IN (");
+                driver.push("s\"");
+                driver.push(column_name);
+                driver.push(" NOT IN (");
                 for (i, x) in xs.iter().enumerate() {
                     if i > 0 {
-                        qb.push(", ");
+                        driver.push(", ");
                     }
-                    qb.push_bind(x.clone());
+                    driver.push_bind(x);
                 }
-                qb.push(")");
+                driver.push(")\"");
             }
         }
     }
@@ -169,28 +205,29 @@ pub enum UuidFilter {
 }
 
 impl UuidFilter {
-    pub fn into_sql(&self, column_name: &'static str, qb: &mut QueryBuilder<'_, Postgres>) {
+    pub fn push_to_driver(&self, column_name: &'static str, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
-                qb.push(column_name);
-                qb.push(" = ");
-                qb.push_bind(*x);
+                driver.push(column_name);
+                driver.push(" == ");
+                driver.push_bind(x);
             }
             Self::Ne(x) => {
-                qb.push(column_name);
-                qb.push(" <> ");
-                qb.push_bind(*x);
+                driver.push(column_name);
+                driver.push(" != ");
+                driver.push_bind(x);
             }
             Self::In(xs) => {
-                qb.push(column_name);
-                qb.push(" IN (");
+                driver.push("s\"");
+                driver.push(column_name);
+                driver.push(" IN (");
                 for (i, x) in xs.iter().enumerate() {
                     if i > 0 {
-                        qb.push(", ");
+                        driver.push(", ");
                     }
-                    qb.push_bind(*x);
+                    driver.push_bind(x);
                 }
-                qb.push(")");
+                driver.push(")\"");
             }
         }
     }
@@ -208,37 +245,37 @@ pub enum DateTimeFilter {
 }
 
 impl DateTimeFilter {
-    pub fn into_sql(&self, column_name: &'static str, qb: &mut QueryBuilder<'_, Postgres>) {
+    pub fn push_to_driver(&self, column_name: &'static str, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
-                qb.push(column_name);
-                qb.push(" = ");
-                qb.push_bind(*x);
+                driver.push(column_name);
+                driver.push(" == ");
+                driver.push_bind(x);
             }
             Self::Ne(x) => {
-                qb.push(column_name);
-                qb.push(" <> ");
-                qb.push_bind(*x);
+                driver.push(column_name);
+                driver.push(" != ");
+                driver.push_bind(x);
             }
             Self::Gt(x) => {
-                qb.push(column_name);
-                qb.push(" > ");
-                qb.push_bind(*x);
+                driver.push(column_name);
+                driver.push(" > ");
+                driver.push_bind(x);
             }
             Self::Ge(x) => {
-                qb.push(column_name);
-                qb.push(" >= ");
-                qb.push_bind(*x);
+                driver.push(column_name);
+                driver.push(" >= ");
+                driver.push_bind(x);
             }
             Self::Lt(x) => {
-                qb.push(column_name);
-                qb.push(" < ");
-                qb.push_bind(*x);
+                driver.push(column_name);
+                driver.push(" < ");
+                driver.push_bind(x);
             }
             Self::Le(x) => {
-                qb.push(column_name);
-                qb.push(" <= ");
-                qb.push_bind(*x);
+                driver.push(column_name);
+                driver.push(" <= ");
+                driver.push_bind(x);
             }
         }
     }
@@ -251,13 +288,59 @@ pub enum TagFilter {
 }
 
 impl TagFilter {
-    pub fn into_sql(&self, column_name: &'static str, qb: &mut QueryBuilder<'_, Postgres>) {
+    pub fn push_to_driver(&self, column_name: &'static str, driver: &mut Driver) {
         match self {
             Self::In(xs) => {
-                qb.push(column_name);
-                qb.push(" @> ");
-                qb.push_bind(xs.clone());
+                driver.push("s\"");
+                driver.push(column_name);
+                driver.push(" @> ");
+                driver.push_bind(xs);
+                driver.push('\"');
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{column::col, cond::gt, from::from, table::table};
+
+    use super::*;
+
+    #[test]
+    fn test_filter() {
+        let mut driver = Driver::new();
+        {
+            from(table("users"))
+                .filter(gt(col("age"), 18))
+                .push_to_driver(&mut driver);
+        }
+        assert_eq!(driver.sql(), "SELECT * FROM users WHERE age > $1");
+    }
+
+    #[test]
+    fn test_sort_filter() {
+        let mut driver = Driver::new();
+        {
+            from(table("users"))
+                .sort(col("age").asc())
+                .push_to_driver(&mut driver);
+        }
+        assert_eq!(driver.sql(), "SELECT * FROM users ORDER BY age");
+    }
+
+    #[test]
+    fn test_take_filter() {
+        let mut driver = Driver::new();
+        {
+            from(table("users"))
+                .take(10)
+                .filter(gt(col("age"), 18))
+                .push_to_driver(&mut driver);
+        }
+        assert_eq!(
+            driver.sql(),
+            "WITH table_0 AS (SELECT * FROM users LIMIT 10) SELECT * FROM table_0 WHERE age > $1"
+        );
     }
 }

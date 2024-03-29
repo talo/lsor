@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{database::HasValueRef, Decode, Postgres, TypeInfo, ValueRef as _};
 use uuid::Uuid;
 
-use crate::var::Var;
+use crate::literal::Literal;
 
 pub trait Iterable {
     fn cursor() -> Cursor;
@@ -75,40 +75,40 @@ impl Cursor {
         })
     }
 
-    pub fn decode(&self, encoded: &str) -> Var {
+    pub fn decode(&self, encoded: &str) -> Literal {
         match self {
-            Self::I32 => Var::I32(I32Cursor::decode(encoded)),
-            Self::String => Var::String(StringCursor::decode(encoded)),
-            Self::Uuid => Var::Uuid(UuidCursor::decode(encoded)),
-            Self::DateTime => Var::DateTime(DateTimeCursor::decode(encoded)),
+            Self::I32 => Literal::I32(I32Cursor::decode(encoded)),
+            Self::String => Literal::String(StringCursor::decode(encoded)),
+            Self::Uuid => Literal::Uuid(UuidCursor::decode(encoded)),
+            Self::DateTime => Literal::DateTime(DateTimeCursor::decode(encoded)),
         }
     }
 
-    pub fn encode(literal: &Var) -> String {
+    pub fn encode(literal: &Literal) -> String {
         match literal {
-            Var::Bool(_) => panic!("invalid cursor type: bool"),
-            Var::I32(v) => I32Cursor::encode(v),
-            Var::String(v) => StringCursor::encode(v),
-            Var::Uuid(v) => UuidCursor::encode(v),
-            Var::DateTime(v) => DateTimeCursor::encode(v),
+            Literal::Bool(_) => panic!("invalid cursor type: bool"),
+            Literal::I32(v) => I32Cursor::encode(v),
+            Literal::String(v) => StringCursor::encode(v),
+            Literal::Uuid(v) => UuidCursor::encode(v),
+            Literal::DateTime(v) => DateTimeCursor::encode(v),
         }
     }
 
-    pub fn min(self) -> Var {
+    pub fn min(self) -> Literal {
         match self {
-            Self::I32 => Var::I32(I32Cursor::min()),
-            Self::String => Var::String(StringCursor::min()),
-            Self::Uuid => Var::Uuid(UuidCursor::min()),
-            Self::DateTime => Var::DateTime(DateTimeCursor::min()),
+            Self::I32 => Literal::I32(I32Cursor::min()),
+            Self::String => Literal::String(StringCursor::min()),
+            Self::Uuid => Literal::Uuid(UuidCursor::min()),
+            Self::DateTime => Literal::DateTime(DateTimeCursor::min()),
         }
     }
 
-    pub fn max(self) -> Var {
+    pub fn max(self) -> Literal {
         match self {
-            Self::I32 => Var::I32(I32Cursor::max()),
-            Self::String => Var::String(StringCursor::max()),
-            Self::Uuid => Var::Uuid(UuidCursor::max()),
-            Self::DateTime => Var::DateTime(DateTimeCursor::max()),
+            Self::I32 => Literal::I32(I32Cursor::max()),
+            Self::String => Literal::String(StringCursor::max()),
+            Self::Uuid => Literal::Uuid(UuidCursor::max()),
+            Self::DateTime => Literal::DateTime(DateTimeCursor::max()),
         }
     }
 }
