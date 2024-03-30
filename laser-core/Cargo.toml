@@ -1,0 +1,23 @@
+[package]
+name = "laser-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-graphql = { version = "7.0", features = ["chrono", "url", "uuid"] }
+base64 = { version = "0.21" }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+sqlx = { version = "0.7", features = [
+    "chrono",
+    "json",
+    "macros",
+    "postgres",
+    "runtime-tokio-rustls",
+    "uuid",
+] }
+prqlc = { version = "0.11" }
+tokio = { version = "1.36", features = ["macros", "rt-multi-thread"] }
+tracing = { version = "0.1" }
+uuid = { version = "1.7", features = ["v4", "serde"] }

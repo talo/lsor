@@ -1212,10 +1212,17 @@ dependencies = [
 name = "laser"
 version = "0.1.0"
 dependencies = [
+ "laser-core",
+ "laser-proc-macro",
+]
+
+[[package]]
+name = "laser-core"
+version = "0.1.0"
+dependencies = [
  "async-graphql",
  "base64",
  "chrono",
- "laser-proc-macro",
  "prqlc",
  "serde",
  "serde_json",
