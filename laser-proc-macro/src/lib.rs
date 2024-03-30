@@ -85,7 +85,7 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         _ => panic!("Laser cannot be derived for non-structs"),
     };
 
-    let sort_by_ident = concatenate_idents(&name, &Ident::new("SortBy", Span::call_site()));
+    let sort_by_ident = concatenate_idents(name, &Ident::new("SortBy", Span::call_site()));
     let sort_by_variants = match &ast.data {
         // Struct
         Data::Struct(data) => match &data.fields {
@@ -177,11 +177,11 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
         _ => panic!("Laser cannot be derived for non-structs"),
     };
 
-    let filter_ident = concatenate_idents(&name, &Ident::new("Filter", Span::call_site()));
-    let all_filter_ident = concatenate_idents(&name, &Ident::new("AllFilter", Span::call_site()));
-    let any_filter_ident = concatenate_idents(&name, &Ident::new("AnyFilter", Span::call_site()));
+    let filter_ident = concatenate_idents(name, &Ident::new("Filter", Span::call_site()));
+    let all_filter_ident = concatenate_idents(name, &Ident::new("AllFilter", Span::call_site()));
+    let any_filter_ident = concatenate_idents(name, &Ident::new("AnyFilter", Span::call_site()));
     let fields_filter_ident =
-        concatenate_idents(&name, &Ident::new("FieldsFilter", Span::call_site()));
+        concatenate_idents(name, &Ident::new("FieldsFilter", Span::call_site()));
 
     let filter_fields = match &ast.data {
         // Struct
@@ -204,18 +204,16 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                             pub #field_name: ::std::option::Option<<#field_ty as ::laser::filter::Filterable>::Filter>
                         })
                     }
+                } else if is_skip_graphql(&field.attrs) {
+                    Some(quote! {
+                        #[graphql(flatten, skip)]
+                        pub #field_name: <#field_ty as ::laser::filter::Filterable>::Filter
+                    })
                 } else {
-                    if is_skip_graphql(&field.attrs) {
-                        Some(quote! {
-                            #[graphql(flatten, skip)]
-                            pub #field_name: <#field_ty as ::laser::filter::Filterable>::Filter
-                        })
-                    } else {
-                        Some(quote! {
-                            #[graphql(flatten)]
-                            pub #field_name: <#field_ty as ::laser::filter::Filterable>::Filter
-                        })
-                    }
+                    Some(quote! {
+                        #[graphql(flatten)]
+                        pub #field_name: <#field_ty as ::laser::filter::Filterable>::Filter
+                    })
                 }
             }),
             Fields::Unnamed(..) => {
@@ -582,7 +580,7 @@ pub fn derive_filter(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).unwrap();
 
     let name = &ast.ident;
-    let name_with_filter = concatenate_idents(&name, &Ident::new("Filter", Span::call_site()));
+    let name_with_filter = concatenate_idents(name, &Ident::new("Filter", Span::call_site()));
     let name_attrs = cmp_attrs(&ast.attrs);
 
     let variants = name_attrs.iter().map(|attr| {
@@ -673,111 +671,91 @@ pub fn derive_filter(input: TokenStream) -> TokenStream {
 fn is_pk(attrs: &Vec<Attribute>) -> bool {
     for attr in attrs {
         if attr.path().is_ident("laser") {
-            match &attr.meta {
-                Meta::List(meta_list) => {
-                    if meta_list
-                        .tokens
-                        .clone()
-                        .into_iter()
-                        .find(|t| "primary_key" == t.to_string())
-                        .is_some()
-                    {
-                        return true;
-                    }
+            if let Meta::List(meta_list) = &attr.meta {
+                if meta_list
+                    .tokens
+                    .clone()
+                    .into_iter()
+                    .any(|t| "primary_key" == t.to_string())
+                {
+                    return true;
                 }
-                _ => {}
             }
         }
     }
-    return false;
+    false
 }
 
 fn is_flatten(attrs: &Vec<Attribute>) -> bool {
     for attr in attrs {
         if attr.path().is_ident("laser") {
-            match &attr.meta {
-                Meta::List(meta_list) => {
-                    if meta_list
-                        .tokens
-                        .clone()
-                        .into_iter()
-                        .find(|t| "flatten" == t.to_string())
-                        .is_some()
-                    {
-                        return true;
-                    }
+            if let Meta::List(meta_list) = &attr.meta {
+                if meta_list
+                    .tokens
+                    .clone()
+                    .into_iter()
+                    .any(|t| "flatten" == t.to_string())
+                {
+                    return true;
                 }
-                _ => {}
             }
         }
     }
-    return false;
+    false
 }
 
 fn is_skip_filter(attrs: &Vec<Attribute>) -> bool {
     for attr in attrs {
         if attr.path().is_ident("laser") {
-            match &attr.meta {
-                Meta::List(meta_list) => {
-                    if meta_list
-                        .tokens
-                        .clone()
-                        .into_iter()
-                        .find(|t| "skip_filter" == t.to_string())
-                        .is_some()
-                    {
-                        return true;
-                    }
+            if let Meta::List(meta_list) = &attr.meta {
+                if meta_list
+                    .tokens
+                    .clone()
+                    .into_iter()
+                    .any(|t| "skip_filter" == t.to_string())
+                {
+                    return true;
                 }
-                _ => {}
             }
         }
     }
-    return false;
+    false
 }
 
 fn is_skip_sort_by(attrs: &Vec<Attribute>) -> bool {
     for attr in attrs {
         if attr.path().is_ident("laser") {
-            match &attr.meta {
-                Meta::List(meta_list) => {
-                    if meta_list
-                        .tokens
-                        .clone()
-                        .into_iter()
-                        .find(|t| "skip_sort_by" == t.to_string())
-                        .is_some()
-                    {
-                        return true;
-                    }
+            if let Meta::List(meta_list) = &attr.meta {
+                if meta_list
+                    .tokens
+                    .clone()
+                    .into_iter()
+                    .any(|t| "skip_sort_by" == t.to_string())
+                {
+                    return true;
                 }
-                _ => {}
             }
         }
     }
-    return false;
+    false
 }
 
 fn is_skip_graphql(attrs: &Vec<Attribute>) -> bool {
     for attr in attrs {
         if attr.path().is_ident("graphql") {
-            match &attr.meta {
-                Meta::List(meta_list) => {
-                    if meta_list
-                        .tokens
-                        .clone()
-                        .into_iter()
-                        .find(|t| "skip" == t.to_string())
-                        .is_some()
-                    {
-                        return true;
-                    }
+            if let Meta::List(meta_list) = &attr.meta {
+                if meta_list
+                    .tokens
+                    .clone()
+                    .into_iter()
+                    .any(|t| "skip" == t.to_string())
+                {
+                    return true;
                 }
-                _ => {}
             }
         }
     }
-    return false;
+    false
 }
 
 fn is_table(attrs: &Vec<Attribute>) -> Option<String> {

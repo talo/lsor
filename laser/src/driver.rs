@@ -32,18 +32,6 @@ impl Driver {
         prqlc::compile(&self.prql, opts).expect("must compile prql")
     }
 
-    pub async fn execute<'c>(
-        self,
-        executor: impl Executor<'c, Database = Postgres>,
-    ) -> sqlx::Result<<Postgres as Database>::QueryResult> {
-        use sqlx::QueryBuilder;
-
-        QueryBuilder::with_arguments(self.sql(), self.arguments)
-            .build()
-            .execute(executor)
-            .await
-    }
-
     pub fn push(&mut self, prql: impl Display) {
         use std::fmt::Write as _;
 
@@ -60,6 +48,60 @@ impl Driver {
         self.arguments
             .format_placeholder(&mut self.prql)
             .expect("must format placeholder");
+    }
+
+    pub async fn execute<'c>(
+        self,
+        executor: impl Executor<'c, Database = Postgres>,
+    ) -> sqlx::Result<<Postgres as Database>::QueryResult> {
+        use sqlx::QueryBuilder;
+
+        QueryBuilder::with_arguments(self.sql(), self.arguments)
+            .build()
+            .execute(executor)
+            .await
+    }
+
+    pub async fn fetch_all(
+        self,
+        executor: impl Executor<'_, Database = Postgres>,
+    ) -> sqlx::Result<Vec<<Postgres as Database>::Row>> {
+        use sqlx::QueryBuilder;
+
+        QueryBuilder::with_arguments(self.sql(), self.arguments)
+            .build()
+            .fetch_all(executor)
+            .await
+    }
+
+    pub async fn fetch_one(
+        self,
+        executor: impl Executor<'_, Database = Postgres>,
+    ) -> sqlx::Result<<Postgres as Database>::Row> {
+        use sqlx::QueryBuilder;
+
+        QueryBuilder::with_arguments(self.sql(), self.arguments)
+            .build()
+            .fetch_one(executor)
+            .await
+    }
+
+    pub async fn fetch_optional(
+        self,
+        executor: impl Executor<'_, Database = Postgres>,
+    ) -> sqlx::Result<Option<<Postgres as Database>::Row>> {
+        use sqlx::QueryBuilder;
+
+        QueryBuilder::with_arguments(self.sql(), self.arguments)
+            .build()
+            .fetch_optional(executor)
+            .await
+    }
+}
+
+impl Default for Driver {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

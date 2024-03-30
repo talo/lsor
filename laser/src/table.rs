@@ -8,6 +8,10 @@ pub fn table(name: impl Display) -> TableName {
     }
 }
 
+pub trait Table {
+    fn table() -> TableName;
+}
+
 pub struct TableName {
     pub name: String,
 }

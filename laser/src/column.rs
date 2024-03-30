@@ -36,6 +36,6 @@ impl ColumnName {
 
 impl PushPrql for ColumnName {
     fn push_to_driver(&self, driver: &mut Driver) {
-        driver.push(&self.name);
+        driver.push(self.name);
     }
 }

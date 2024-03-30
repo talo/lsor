@@ -9,6 +9,17 @@ pub trait Ordered {
     fn order(&self) -> &Order<Self::By>;
 }
 
+impl<T> Ordered for &T
+where
+    T: Ordered,
+{
+    type By = T::By;
+
+    fn order(&self) -> &Order<Self::By> {
+        (*self).order()
+    }
+}
+
 pub enum Order<By> {
     Asc(By),
     Desc(By),

@@ -42,6 +42,24 @@ pub struct Pagination {
     pub last: usize,
 }
 
+pub fn select_page_info<Query>(
+    query: Query,
+    cursor: Cursor,
+    start: String,
+    end: String,
+) -> SelectPageInfo<Query> {
+    SelectPageInfo {
+        query,
+        cursor,
+        start,
+        end,
+    }
+}
+
+pub fn select_page_items<Query>(query: Query, pagination: Pagination) -> SelectPageItems<Query> {
+    SelectPageItems { query, pagination }
+}
+
 pub struct SelectPageInfo<Query> {
     pub query: Query,
     pub cursor: Cursor,
@@ -109,14 +127,14 @@ where
             .pagination
             .after
             .as_ref()
-            .map(|v| self.pagination.cursor.decode(&v))
+            .map(|v| self.pagination.cursor.decode(v))
             .unwrap_or(self.pagination.cursor.min());
 
         let before = self
             .pagination
             .before
             .as_ref()
-            .map(|v| self.pagination.cursor.decode(&v))
+            .map(|v| self.pagination.cursor.decode(v))
             .unwrap_or(self.pagination.cursor.max());
 
         Filtered {
