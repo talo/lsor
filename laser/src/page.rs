@@ -10,7 +10,7 @@ use crate::{
     either::if_then_else,
     expr::{case, count, sum, when},
     filter::Filtered,
-    sort::Ordered,
+    sort::SortedBy,
     var::{one, zero},
 };
 
@@ -69,11 +69,11 @@ pub struct SelectPageInfo<Query> {
 
 impl<Query> PushPrql for SelectPageInfo<Query>
 where
-    Query: Ordered + PushPrql,
-    <Query as Ordered>::By: PushPrql,
+    Query: SortedBy + PushPrql,
+    <Query as SortedBy>::By: PushPrql,
 {
     fn push_to_driver(&self, driver: &mut crate::driver::Driver) {
-        let order = self.query.order();
+        let sort = self.query.sorted_by();
         let start = self.cursor.decode(&self.start);
         let end = self.cursor.decode(&self.end);
         Aggregate {
@@ -84,9 +84,9 @@ where
                     col("has_prev_page"),
                     &gt(
                         sum(case([when(if_then_else(
-                            order.is_asc(),
-                            || lt(order.by(), &start),
-                            || gt(order.by(), &start),
+                            sort.is_asc(),
+                            || lt(sort.by(), &start),
+                            || gt(sort.by(), &start),
                         ))
                         .then(one())])),
                         zero(),
@@ -96,9 +96,9 @@ where
                     col("has_next_page"),
                     &gt(
                         sum(case([when(if_then_else(
-                            order.is_asc(),
-                            || gt(order.by(), &end),
-                            || lt(order.by(), &end),
+                            sort.is_asc(),
+                            || gt(sort.by(), &end),
+                            || lt(sort.by(), &end),
                         ))
                         .then(one())])),
                         zero(),
@@ -117,11 +117,11 @@ pub struct SelectPageItems<Query> {
 
 impl<Query> PushPrql for SelectPageItems<Query>
 where
-    Query: Ordered + PushPrql,
-    <Query as Ordered>::By: PushPrql,
+    Query: SortedBy + PushPrql,
+    <Query as SortedBy>::By: PushPrql,
 {
     fn push_to_driver(&self, driver: &mut crate::driver::Driver) {
-        let order = self.query.order();
+        let sort = self.query.sorted_by();
 
         let after = self
             .pagination
@@ -141,21 +141,21 @@ where
             query: &self.query,
             filter: and(
                 if_then_else(
-                    order.is_asc(),
-                    || gt(order.by(), &after),
-                    || lt(order.by(), &after),
+                    sort.is_asc(),
+                    || gt(sort.by(), &after),
+                    || lt(sort.by(), &after),
                 ),
                 if_then_else(
-                    order.is_asc(),
-                    || lt(order.by(), &before),
-                    || gt(order.by(), &before),
+                    sort.is_asc(),
+                    || lt(sort.by(), &before),
+                    || gt(sort.by(), &before),
                 ),
             ),
         }
         .take(self.pagination.first)
-        .sort(order.flip())
+        .sort(sort.flip())
         .take(self.pagination.last)
-        .sort(order.as_ref())
+        .sort(sort.as_ref())
         .push_to_driver(driver);
     }
 }

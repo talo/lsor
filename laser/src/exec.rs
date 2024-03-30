@@ -9,7 +9,7 @@ use crate::{
     driver::{Driver, PushPrql},
     from::from,
     page::{select_page_info, select_page_items, Pagination, TotalCount},
-    sort::Order,
+    sort::Sort,
     table::Table,
 };
 
@@ -35,7 +35,7 @@ where
 pub async fn load_page<'c, E, F, S, R>(
     executor: E,
     filter: F,
-    sort: Order<S>,
+    sort: Sort<S>,
     pagination: Pagination,
 ) -> sqlx::Result<Connection<String, R, TotalCount>>
 where

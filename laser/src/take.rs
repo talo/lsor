@@ -1,7 +1,7 @@
 use crate::{
     driver::{Driver, PushPrql},
     filter::Filtered,
-    sort::{Order, Sorted},
+    sort::{Sort, Sorted},
 };
 
 pub struct Taken<Query> {
@@ -17,8 +17,8 @@ impl<Query> Taken<Query> {
         }
     }
 
-    pub fn sort<By>(&self, order: Order<By>) -> Sorted<&Self, By> {
-        Sorted { query: self, order }
+    pub fn sort<By>(&self, sort: Sort<By>) -> Sorted<&Self, By> {
+        Sorted { query: self, sort }
     }
 }
 

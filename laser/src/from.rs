@@ -3,7 +3,7 @@ use crate::{
     derive::Derive,
     driver::{Driver, PushPrql},
     filter::Filtered,
-    sort::{Order, Sorted},
+    sort::{Sort, Sorted},
     table::TableName,
     take::Taken,
 };
@@ -24,8 +24,8 @@ impl From {
         }
     }
 
-    pub fn sort<By>(self, order: Order<By>) -> Sorted<Self, By> {
-        Sorted { query: self, order }
+    pub fn sort<By>(self, sort: Sort<By>) -> Sorted<Self, By> {
+        Sorted { query: self, sort }
     }
 
     pub fn take(self, n: usize) -> Taken<Self> {

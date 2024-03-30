@@ -3,67 +3,67 @@ use crate::{
     take::Taken,
 };
 
-pub trait Ordered {
+pub trait SortedBy {
     type By;
 
-    fn order(&self) -> &Order<Self::By>;
+    fn sorted_by(&self) -> &Sort<Self::By>;
 }
 
-impl<T> Ordered for &T
+impl<T> SortedBy for &T
 where
-    T: Ordered,
+    T: SortedBy,
 {
     type By = T::By;
 
-    fn order(&self) -> &Order<Self::By> {
-        (*self).order()
+    fn sorted_by(&self) -> &Sort<Self::By> {
+        (*self).sorted_by()
     }
 }
 
-pub enum Order<By> {
+pub enum Sort<By> {
     Asc(By),
     Desc(By),
 }
 
-impl<By> Order<By> {
+impl<By> Sort<By> {
     pub fn by(&self) -> &By {
         match self {
-            Order::Asc(by) => by,
-            Order::Desc(by) => by,
+            Sort::Asc(by) => by,
+            Sort::Desc(by) => by,
         }
     }
 
-    pub fn flip(&self) -> Order<&By> {
+    pub fn flip(&self) -> Sort<&By> {
         match self {
-            Order::Asc(by) => Order::Desc(by),
-            Order::Desc(by) => Order::Asc(by),
+            Sort::Asc(by) => Sort::Desc(by),
+            Sort::Desc(by) => Sort::Asc(by),
         }
     }
 
-    pub fn as_ref(&self) -> Order<&By> {
+    pub fn as_ref(&self) -> Sort<&By> {
         match self {
-            Order::Asc(by) => Order::Asc(by),
-            Order::Desc(by) => Order::Desc(by),
+            Sort::Asc(by) => Sort::Asc(by),
+            Sort::Desc(by) => Sort::Desc(by),
         }
     }
 
     pub fn is_asc(&self) -> bool {
-        matches!(self, Order::Asc(_))
+        matches!(self, Sort::Asc(_))
     }
 
     pub fn is_desc(&self) -> bool {
-        matches!(self, Order::Desc(_))
+        matches!(self, Sort::Desc(_))
     }
 }
 
-impl<By> PushPrql for Order<By>
+impl<By> PushPrql for Sort<By>
 where
     By: PushPrql,
 {
     fn push_to_driver(&self, driver: &mut Driver) {
         match self {
-            Order::Asc(by) => by.push_to_driver(driver),
-            Order::Desc(by) => {
+            Sort::Asc(by) => by.push_to_driver(driver),
+            Sort::Desc(by) => {
                 driver.push("-");
                 by.push_to_driver(driver);
             }
@@ -73,7 +73,7 @@ where
 
 pub struct Sorted<Query, By> {
     pub query: Query,
-    pub order: Order<By>,
+    pub sort: Sort<By>,
 }
 
 impl<Query, By> Sorted<Query, By> {
@@ -82,11 +82,11 @@ impl<Query, By> Sorted<Query, By> {
     }
 }
 
-impl<Query, By> Ordered for Sorted<Query, By> {
+impl<Query, By> SortedBy for Sorted<Query, By> {
     type By = By;
 
-    fn order(&self) -> &Order<Self::By> {
-        &self.order
+    fn sorted_by(&self) -> &Sort<Self::By> {
+        &self.sort
     }
 }
 
@@ -98,7 +98,7 @@ where
     fn push_to_driver(&self, driver: &mut Driver) {
         self.query.push_to_driver(driver);
         driver.push("\nsort {");
-        self.order.push_to_driver(driver);
+        self.sort.push_to_driver(driver);
         driver.push("}");
     }
 }

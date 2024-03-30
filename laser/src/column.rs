@@ -1,7 +1,7 @@
 use crate::{
     cond::{Eq, Gt, Lt},
     driver::{Driver, PushPrql},
-    sort::Order,
+    sort::Sort,
 };
 
 pub fn col(name: &'static str) -> ColumnName {
@@ -13,12 +13,12 @@ pub struct ColumnName {
 }
 
 impl ColumnName {
-    pub fn asc(self) -> Order<Self> {
-        Order::Asc(self)
+    pub fn asc(self) -> Sort<Self> {
+        Sort::Asc(self)
     }
 
-    pub fn desc(self) -> Order<Self> {
-        Order::Desc(self)
+    pub fn desc(self) -> Sort<Self> {
+        Sort::Desc(self)
     }
 
     pub fn eq<RHS>(&self, rhs: RHS) -> Eq<&Self, RHS> {

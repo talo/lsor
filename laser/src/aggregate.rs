@@ -1,7 +1,7 @@
 use crate::{
     column::ColumnName,
     driver::PushPrql,
-    sort::{Order, Sorted},
+    sort::{Sort, Sorted},
 };
 
 pub struct Aggregate<Query, Expr> {
@@ -15,8 +15,8 @@ impl<Query, Expr> Aggregate<Query, Expr> {
         self
     }
 
-    pub fn sort<By>(self, order: Order<By>) -> Sorted<Self, By> {
-        Sorted { query: self, order }
+    pub fn sort<By>(self, sort: Sort<By>) -> Sorted<Self, By> {
+        Sorted { query: self, sort }
     }
 }
 

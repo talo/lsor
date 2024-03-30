@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::{
     driver::{Driver, PushPrql},
-    sort::{Order, Sorted},
+    sort::{Sort, Sorted},
     take::Taken,
 };
 
@@ -14,8 +14,8 @@ pub struct Filtered<Query, Filter> {
 }
 
 impl<Query, Filter> Filtered<Query, Filter> {
-    pub fn sort<By>(&self, order: Order<By>) -> Sorted<&Self, By> {
-        Sorted { query: self, order }
+    pub fn sort<By>(&self, sort: Sort<By>) -> Sorted<&Self, By> {
+        Sorted { query: self, sort }
     }
 
     pub fn take(&self, n: usize) -> Taken<&Self> {
