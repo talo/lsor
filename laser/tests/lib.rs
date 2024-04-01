@@ -4,8 +4,9 @@ use laser::{
     sql::IntoSql,
     table::Table,
     upsert::{upsert, upsert_into},
-    DateTimeCursor, Filterable, Laser, Order, Pagination, ToOrderBy,
+    DateTimeCursor, Filterable, JSONFilter, JSONObjectFilter, Laser, Order, Pagination, ToOrderBy,
 };
+use serde::{Deserialize, Serialize};
 use sqlx::{QueryBuilder, Type};
 use uuid::Uuid;
 
@@ -29,6 +30,40 @@ pub enum AccountTier {
     Enterprise,
 }
 
+#[derive(Clone, Deserialize, SimpleObject, Serialize)]
+pub struct AccountConfig {
+    pub x: String,
+    pub y: String,
+    pub z: String,
+}
+
+impl sqlx::Type<sqlx::Postgres> for AccountConfig {
+    fn type_info() -> <sqlx::Postgres as sqlx::Database>::TypeInfo {
+        sqlx::types::JsonValue::type_info()
+    }
+}
+
+impl<'q> sqlx::Encode<'q, sqlx::Postgres> for AccountConfig {
+    fn encode_by_ref(
+        &self,
+        buf: &mut <sqlx::Postgres as sqlx::database::HasArguments<'q>>::ArgumentBuffer,
+    ) -> sqlx::encode::IsNull {
+        serde_json::to_value(self)
+            .expect("argument must be valid json")
+            .encode_by_ref(buf)
+    }
+}
+
+impl<'r> sqlx::Decode<'r, sqlx::Postgres> for AccountConfig {
+    fn decode(
+        value: <sqlx::Postgres as sqlx::database::HasValueRef<'r>>::ValueRef,
+    ) -> Result<Self, sqlx::error::BoxDynError> {
+        Ok(serde_json::from_value(sqlx::types::JsonValue::decode(
+            value,
+        )?)?)
+    }
+}
+
 #[derive(Clone, Laser, SimpleObject)]
 #[laser(table = "accounts")]
 pub struct Account {
@@ -39,6 +74,8 @@ pub struct Account {
     #[graphql(skip)]
     #[laser(skip_sort_by)]
     pub tier: AccountTier,
+    #[laser(json, skip_sort_by)]
+    pub config: AccountConfig,
 }
 
 #[test]
@@ -53,6 +90,11 @@ fn test_upsert() {
         },
         name: "test".to_string(),
         tier: AccountTier::Free,
+        config: AccountConfig {
+            x: "x".to_string(),
+            y: "y".to_string(),
+            z: "z".to_string(),
+        },
     };
 
     // // TODO: Get this passing.
@@ -105,17 +147,16 @@ fn select_page() {
     let sort_by = AccountSortBy::Metadata(MetadataSortBy::Id(Order::Desc));
     let subquery = Account::table()
         .select(laser::all())
-        .filter_by(
-            laser::and(true, true), // AccountFilter::any([
-                                    //     AccountFilter::tier(AccountTierFilter::Eq(AccountTier::Free)).into(),
-                                    //     AccountFilter::tier(AccountTierFilter::Eq(AccountTier::Pro)).into(),
-                                    // ])
-                                    // .with_metadata(MetadataFilter::created_at(DateTimeFilter::Eq(Utc::now())))
-                                    // .with_name(StringFilter::Eq("test".to_string())),
-        )
+        .filter_by(AccountFieldsFilter {
+            config: Some(JSONFilter::Eq(JSONObjectFilter {
+                key: "x".to_string(),
+                value: "y".to_string(),
+            })),
+            ..Default::default()
+        })
         .order_by(sort_by.to_order_by());
     laser::select_page_items(
-        subquery,
+        subquery.clone(),
         Pagination {
             cursor: sort_by.cursor(),
             after,

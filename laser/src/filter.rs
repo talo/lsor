@@ -1,4 +1,4 @@
-use async_graphql::OneofObject;
+use async_graphql::{InputObject, OneofObject};
 use chrono::{DateTime, Utc};
 use sqlx::{Postgres, QueryBuilder};
 use uuid::Uuid;
@@ -32,6 +32,41 @@ impl Filterable for DateTime<Utc> {
 
 impl Filterable for Vec<String> {
     type Filter = TagFilter;
+}
+
+#[derive(Clone, Debug, OneofObject)]
+#[graphql(rename_fields = "snake_case")]
+pub enum JSONFilter {
+    Eq(JSONObjectFilter),
+    Ne(JSONObjectFilter),
+}
+
+#[derive(Clone, Debug, InputObject)]
+#[graphql(rename_fields = "snake_case")]
+pub struct JSONObjectFilter {
+    pub key: String,
+    pub value: String,
+}
+
+impl JSONFilter {
+    pub fn into_sql(&self, column_name: &'static str, qb: &mut QueryBuilder<'_, Postgres>) {
+        match self {
+            Self::Eq(x) => {
+                qb.push(column_name);
+                qb.push("->>'");
+                qb.push(&x.key);
+                qb.push("' = ");
+                qb.push_bind(x.value.clone());
+            }
+            Self::Ne(x) => {
+                qb.push(column_name);
+                qb.push("->>'");
+                qb.push(&x.key);
+                qb.push("' <> ");
+                qb.push_bind(x.value.clone());
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, OneofObject)]

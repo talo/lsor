@@ -194,13 +194,21 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                     return None;
                 }
                 if !field_flatten {
-                    if is_skip_graphql(&field.attrs) {
+                    let graphql_attrib = if is_skip_graphql(&field.attrs) {
                         Some(quote! {
                             #[graphql(skip)]
-                            pub #field_name: ::std::option::Option<<#field_ty as ::laser::filter::Filterable>::Filter>
                         })
                     } else {
-                        Some(quote! {
+                        None
+                    };
+                    if is_json(&field.attrs) {
+                        Some(quote!{
+                            #graphql_attrib
+                            pub #field_name: ::std::option::Option<::laser::filter::JSONFilter>
+                        })
+                    } else {
+                        Some(quote!{
+                            #graphql_attrib
                             pub #field_name: ::std::option::Option<<#field_ty as ::laser::filter::Filterable>::Filter>
                         })
                     }
@@ -268,6 +276,9 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                 if is_skip_filter(&field.attrs) {
                     return None;
                 }
+                if is_json(&field.attrs) {
+                    return None;
+                }
                 if !field_flatten {
                     Some(quote! {
                         pub fn #field_name(#field_name: <#field_ty as ::laser::filter::Filterable>::Filter) -> #fields_filter_ident {
@@ -318,6 +329,9 @@ pub fn derive_laser(input: TokenStream) -> TokenStream {
                 let field_ty = &field.ty;
                 let field_flatten = is_flatten(&field.attrs);
                 if is_skip_filter(&field.attrs) {
+                    return None;
+                }
+                if is_json(&field.attrs) {
                     return None;
                 }
                 if !field_flatten {
@@ -724,6 +738,28 @@ fn is_skip_filter(attrs: &Vec<Attribute>) -> bool {
                         .clone()
                         .into_iter()
                         .find(|t| "skip_filter" == t.to_string())
+                        .is_some()
+                    {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    return false;
+}
+
+fn is_json(attrs: &Vec<Attribute>) -> bool {
+    for attr in attrs {
+        if attr.path().is_ident("laser") {
+            match &attr.meta {
+                Meta::List(meta_list) => {
+                    if meta_list
+                        .tokens
+                        .clone()
+                        .into_iter()
+                        .find(|t| "json" == t.to_string())
                         .is_some()
                     {
                         return true;
