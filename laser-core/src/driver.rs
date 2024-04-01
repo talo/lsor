@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
+use chrono::{DateTime, Utc};
 use sqlx::{postgres::PgArguments, Database, Encode, Executor, Postgres, Type};
+use uuid::Uuid;
 
 pub struct Driver {
     prql: String,
@@ -109,21 +111,6 @@ pub trait PushPrql {
     fn push_to_driver(&self, driver: &mut Driver);
 }
 
-impl<T> PushPrql for &T
-where
-    T: PushPrql,
-{
-    fn push_to_driver(&self, driver: &mut Driver) {
-        (*self).push_to_driver(driver)
-    }
-}
-
-impl PushPrql for &dyn PushPrql {
-    fn push_to_driver(&self, driver: &mut Driver) {
-        (*self).push_to_driver(driver)
-    }
-}
-
 impl PushPrql for String {
     fn push_to_driver(&self, driver: &mut Driver) {
         driver.push_bind(self);
@@ -148,6 +135,56 @@ impl PushPrql for bool {
     }
 }
 
+impl PushPrql for Uuid {
+    fn push_to_driver(&self, driver: &mut Driver) {
+        driver.push_bind(self);
+    }
+}
+
+impl PushPrql for DateTime<Utc> {
+    fn push_to_driver(&self, driver: &mut Driver) {
+        driver.push_bind(self);
+    }
+}
+
+impl<T> PushPrql for Option<T>
+where
+    for<'q> T: 'q + Encode<'q, Postgres> + Sync + Type<Postgres>,
+{
+    fn push_to_driver(&self, driver: &mut Driver) {
+        driver.push_bind(self);
+    }
+}
+
+impl<T> PushPrql for Vec<T>
+where
+    T: PushPrql,
+{
+    fn push_to_driver(&self, driver: &mut Driver) {
+        for (i, value) in self.iter().enumerate() {
+            if i > 0 {
+                driver.push(", ");
+            }
+            value.push_to_driver(driver);
+        }
+    }
+}
+
+impl<T> PushPrql for &T
+where
+    T: PushPrql,
+{
+    fn push_to_driver(&self, driver: &mut Driver) {
+        (*self).push_to_driver(driver);
+    }
+}
+
+impl PushPrql for &dyn PushPrql {
+    fn push_to_driver(&self, driver: &mut Driver) {
+        (*self).push_to_driver(driver)
+    }
+}
+
 pub fn sql(sql: &'static str) -> SQL {
     SQL { sql }
 }
@@ -158,8 +195,8 @@ pub struct SQL {
 
 impl PushPrql for SQL {
     fn push_to_driver(&self, driver: &mut crate::driver::Driver) {
-        driver.push("s\"");
+        driver.push("s\'");
         driver.push(self.sql);
-        driver.push('\"');
+        driver.push('\'');
     }
 }

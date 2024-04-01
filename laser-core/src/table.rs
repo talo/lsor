@@ -1,23 +1,20 @@
-use std::fmt::Display;
-
 use crate::driver::{Driver, PushPrql};
 
-pub fn table(name: impl Display) -> TableName {
-    TableName {
-        name: name.to_string(),
-    }
+pub fn table(name: &'static str) -> TableName {
+    TableName { name }
 }
 
 pub trait Table {
-    fn table() -> TableName;
+    fn table_name() -> TableName;
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TableName {
-    pub name: String,
+    pub name: &'static str,
 }
 
 impl PushPrql for TableName {
     fn push_to_driver(&self, driver: &mut Driver) {
-        driver.push(&self.name);
+        driver.push(self.name);
     }
 }

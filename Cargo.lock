@@ -1212,8 +1212,12 @@ dependencies = [
 name = "laser"
 version = "0.1.0"
 dependencies = [
+ "async-graphql",
+ "chrono",
  "laser-core",
  "laser-proc-macro",
+ "sqlx",
+ "uuid",
 ]
 
 [[package]]
@@ -1238,7 +1242,8 @@ version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.50",
+ "sqlx-macros-core",
+ "syn 1.0.109",
 ]
 
 [[package]]

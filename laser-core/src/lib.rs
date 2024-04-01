@@ -14,3 +14,4 @@ pub mod sort;
 pub mod table;
 pub mod take;
 pub mod var;
+pub mod row;

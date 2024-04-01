@@ -21,7 +21,7 @@ where
 {
     let mut driver = Driver::new();
 
-    from(R::table())
+    from(R::table_name())
         .filter(filter)
         .take(1)
         .push_to_driver(&mut driver);
@@ -47,7 +47,7 @@ where
     use sqlx::Row;
 
     let cursor = pagination.cursor;
-    let subquery = from(R::table()).filter(filter);
+    let subquery = from(R::table_name()).filter(filter);
     let subquery = subquery.sort(sort);
 
     let mut driver = Driver::new();

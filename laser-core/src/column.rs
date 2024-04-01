@@ -8,6 +8,7 @@ pub fn col(name: &'static str) -> ColumnName {
     ColumnName { name }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ColumnName {
     pub name: &'static str,
 }
