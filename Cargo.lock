@@ -1216,6 +1216,8 @@ dependencies = [
  "chrono",
  "laser-core",
  "laser-proc-macro",
+ "serde",
+ "serde_json",
  "sqlx",
  "uuid",
 ]

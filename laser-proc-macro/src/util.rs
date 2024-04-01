@@ -91,111 +91,30 @@ pub(crate) fn collect_filter_attrs(attrs: &Vec<Attribute>) -> Vec<String> {
 }
 
 pub(crate) fn has_pk_attr(attrs: &Vec<Attribute>) -> bool {
-    for attr in attrs {
-        if !attr.path.is_ident("laser") {
-            // ignore non-laser attributes
-            continue;
-        }
-        // find any pk or primary_key attribute
-        if attr
-            .tokens
-            .clone()
-            .into_iter()
-            .filter_map(|token_tree| match token_tree {
-                TokenTree::Group(group) => Some(group.stream().into_iter()),
-                _ => None,
-            })
-            .flatten()
-            .any(|t| {
-                let s = t.to_string();
-                s == "pk" || s == "primary_key"
-            })
-        {
-            return true;
-        }
-    }
-    false
+    has_any_attr(&["pk", "primary_key"], attrs)
 }
 
 pub(crate) fn has_flatten_attr(attrs: &Vec<Attribute>) -> bool {
-    for attr in attrs {
-        if !attr.path.is_ident("laser") {
-            // ignore non-laser attributes
-            continue;
-        }
-        // find any flat or flatten attribute
-        if attr
-            .tokens
-            .clone()
-            .into_iter()
-            .filter_map(|token_tree| match token_tree {
-                TokenTree::Group(group) => Some(group.stream().into_iter()),
-                _ => None,
-            })
-            .flatten()
-            .any(|t| {
-                let s = t.to_string();
-                s == "flat" || s == "flatten"
-            })
-        {
-            return true;
-        }
-    }
-    false
+    has_any_attr(&["flat", "flatten"], attrs)
 }
 
 pub(crate) fn has_skip_attr(attrs: &Vec<Attribute>) -> bool {
-    for attr in attrs {
-        if !attr.path.is_ident("laser") {
-            // ignore non-laser attributes
-            continue;
-        }
-        // find any skip attributes
-        if attr
-            .tokens
-            .clone()
-            .into_iter()
-            .filter_map(|token_tree| match token_tree {
-                TokenTree::Group(group) => Some(group.stream().into_iter()),
-                _ => None,
-            })
-            .flatten()
-            .any(|t| "skip" == t.to_string())
-        {
-            return true;
-        }
-    }
-    false
+    has_any_attr(&["skip"], attrs)
 }
 
 pub(crate) fn has_skip_filter_attr(attrs: &Vec<Attribute>) -> bool {
-    for attr in attrs {
-        if !attr.path.is_ident("laser") {
-            // ignore non-laser attributes
-            continue;
-        }
-        // find any skip or skip_filter attributes
-        if attr
-            .tokens
-            .clone()
-            .into_iter()
-            .filter_map(|token_tree| match token_tree {
-                TokenTree::Group(group) => Some(group.stream().into_iter()),
-                _ => None,
-            })
-            .flatten()
-            .any(|t| {
-                let s = t.to_string();
-                s == "skip" || s == "skip_filter"
-            })
-        {
-            return true;
-        }
-    }
-    false
+    has_any_attr(&["skip", "skip_filter"], attrs)
 }
 
 pub(crate) fn has_skip_sort_attr(attrs: &Vec<Attribute>) -> bool {
+    has_any_attr(&["skip", "skip_sort"], attrs)
+}
+
+pub(crate) fn has_json_attr(attrs: &Vec<Attribute>) -> bool {
+    has_any_attr(&["json"], attrs)
+}
+
+fn has_any_attr(options: &[&str], attrs: &[Attribute]) -> bool {
     for attr in attrs {
         if !attr.path.is_ident("laser") {
             // ignore non-laser attributes
@@ -213,7 +132,7 @@ pub(crate) fn has_skip_sort_attr(attrs: &Vec<Attribute>) -> bool {
             .flatten()
             .any(|t| {
                 let s = t.to_string();
-                s == "skip" || s == "skip_sort"
+                options.iter().any(|o| &s == o)
             })
         {
             return true;

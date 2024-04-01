@@ -19,7 +19,6 @@ pub fn derive_row(input: TokenStream) -> TokenStream {
     row::expand_derive_row(input)
 }
 
-
 #[proc_macro_derive(Sort)]
 pub fn derive_sort(input: TokenStream) -> TokenStream {
     sort::expand_derive_sort(input)

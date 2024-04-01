@@ -1,4 +1,4 @@
-use async_graphql::OneofObject;
+use async_graphql::{Enum, OneofObject};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
@@ -66,6 +66,10 @@ impl Filterable for Vec<String> {
     type Filter = TagFilter;
 }
 
+impl Filterable for bool {
+    type Filter = BoolFilter;
+}
+
 #[derive(Clone, Debug, OneofObject)]
 #[graphql(rename_fields = "snake_case")]
 pub enum I32Filter {
@@ -77,36 +81,30 @@ pub enum I32Filter {
     Le(i32),
 }
 
-impl I32Filter {
-    pub fn push_to_driver(self, column_name: &'static str, driver: &mut Driver) {
+impl PushPrql for I32Filter {
+    fn push_to_driver(&self, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
-                driver.push(column_name);
                 driver.push(" == ");
                 driver.push_bind(x);
             }
             Self::Ne(x) => {
-                driver.push(column_name);
                 driver.push(" != ");
                 driver.push_bind(x);
             }
             Self::Gt(x) => {
-                driver.push(column_name);
                 driver.push(" > ");
                 driver.push_bind(x);
             }
             Self::Ge(x) => {
-                driver.push(column_name);
                 driver.push(" >= ");
                 driver.push_bind(x);
             }
             Self::Lt(x) => {
-                driver.push(column_name);
                 driver.push(" < ");
                 driver.push_bind(x);
             }
             Self::Le(x) => {
-                driver.push(column_name);
                 driver.push(" <= ");
                 driver.push_bind(x);
             }
@@ -123,74 +121,34 @@ pub enum StringFilter {
     Ge(String),
     Lt(String),
     Le(String),
-    Like(String),
-    In(Vec<String>),
-    NotIn(Vec<String>),
 }
 
-impl StringFilter {
-    pub fn push_to_driver(&self, column_name: &'static str, driver: &mut Driver) {
+impl PushPrql for StringFilter {
+    fn push_to_driver(&self, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
-                driver.push(column_name);
                 driver.push(" == ");
                 driver.push_bind(x);
             }
             Self::Ne(x) => {
-                driver.push(column_name);
                 driver.push(" != ");
                 driver.push_bind(x);
             }
             Self::Gt(x) => {
-                driver.push(column_name);
                 driver.push(" > ");
                 driver.push_bind(x);
             }
             Self::Ge(x) => {
-                driver.push(column_name);
                 driver.push(" >= ");
                 driver.push_bind(x);
             }
             Self::Lt(x) => {
-                driver.push(column_name);
                 driver.push(" < ");
                 driver.push_bind(x);
             }
             Self::Le(x) => {
-                driver.push(column_name);
                 driver.push(" <= ");
                 driver.push_bind(x);
-            }
-            Self::Like(x) => {
-                driver.push("s\"");
-                driver.push(column_name);
-                driver.push(" LIKE ");
-                driver.push_bind(x);
-                driver.push('\"');
-            }
-            Self::In(xs) => {
-                driver.push("s\"");
-                driver.push(column_name);
-                driver.push(" IN (");
-                for (i, x) in xs.iter().enumerate() {
-                    if i > 0 {
-                        driver.push(", ");
-                    }
-                    driver.push_bind(x);
-                }
-                driver.push(")\"");
-            }
-            Self::NotIn(xs) => {
-                driver.push("s\"");
-                driver.push(column_name);
-                driver.push(" NOT IN (");
-                for (i, x) in xs.iter().enumerate() {
-                    if i > 0 {
-                        driver.push(", ");
-                    }
-                    driver.push_bind(x);
-                }
-                driver.push(")\"");
             }
         }
     }
@@ -204,22 +162,19 @@ pub enum UuidFilter {
     In(Vec<Uuid>),
 }
 
-impl UuidFilter {
-    pub fn push_to_driver(&self, column_name: &'static str, driver: &mut Driver) {
+impl PushPrql for UuidFilter {
+    fn push_to_driver(&self, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
-                driver.push(column_name);
                 driver.push(" == ");
                 driver.push_bind(x);
             }
             Self::Ne(x) => {
-                driver.push(column_name);
                 driver.push(" != ");
                 driver.push_bind(x);
             }
             Self::In(xs) => {
                 driver.push("s\"");
-                driver.push(column_name);
                 driver.push(" IN (");
                 for (i, x) in xs.iter().enumerate() {
                     if i > 0 {
@@ -244,36 +199,30 @@ pub enum DateTimeFilter {
     Le(DateTime<Utc>),
 }
 
-impl DateTimeFilter {
-    pub fn push_to_driver(&self, column_name: &'static str, driver: &mut Driver) {
+impl PushPrql for DateTimeFilter {
+    fn push_to_driver(&self, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
-                driver.push(column_name);
                 driver.push(" == ");
                 driver.push_bind(x);
             }
             Self::Ne(x) => {
-                driver.push(column_name);
                 driver.push(" != ");
                 driver.push_bind(x);
             }
             Self::Gt(x) => {
-                driver.push(column_name);
                 driver.push(" > ");
                 driver.push_bind(x);
             }
             Self::Ge(x) => {
-                driver.push(column_name);
                 driver.push(" >= ");
                 driver.push_bind(x);
             }
             Self::Lt(x) => {
-                driver.push(column_name);
                 driver.push(" < ");
                 driver.push_bind(x);
             }
             Self::Le(x) => {
-                driver.push(column_name);
                 driver.push(" <= ");
                 driver.push_bind(x);
             }
@@ -287,15 +236,33 @@ pub enum TagFilter {
     In(Vec<String>),
 }
 
-impl TagFilter {
-    pub fn push_to_driver(&self, column_name: &'static str, driver: &mut Driver) {
+impl PushPrql for TagFilter {
+    fn push_to_driver(&self, driver: &mut Driver) {
         match self {
             Self::In(xs) => {
-                driver.push("s\"");
-                driver.push(column_name);
-                driver.push(" @> ");
+                driver.push("s\" @> ");
                 driver.push_bind(xs);
                 driver.push('\"');
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Enum)]
+#[graphql(rename_items = "snake_case")]
+pub enum BoolFilter {
+    True,
+    False,
+}
+
+impl PushPrql for BoolFilter {
+    fn push_to_driver(&self, driver: &mut Driver) {
+        match self {
+            Self::True => {
+                driver.push(" == true");
+            }
+            Self::False => {
+                driver.push(" == false");
             }
         }
     }
