@@ -35,7 +35,20 @@ where
     R: Row,
 {
     fn push_to_driver(&self, driver: &mut Driver) {
-        driver.push("s\'");
+        // TODO: For now, the PRQL compiler is unable to handle insert
+        // statements. To work around this, we inject raw SQL into the driver
+        // (and later - during execution - we directly execute the PRQL without
+        // compilation).
+        //
+        // As such, we need to ensure that the driver is empty before we push
+        // anything into it, because raw SQL is obvious not compatible with
+        // PRQL. We have tried using the S-string in PRQL but that also does not
+        // work, because all PRQL expressions must start with select statements.
+        //
+        // This is a temporary solution until the PRQL compiler is able to
+        // handle insert statements.
+        assert!(driver.is_empty());
+
         driver.push("INSERT INTO ");
         self.table_name.push_to_driver(driver);
         driver.push(" (");
@@ -78,6 +91,6 @@ where
             driver.push("$");
             driver.push(j + 1);
         }
-        driver.push(")\'");
+        driver.push(")");
     }
 }

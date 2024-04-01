@@ -70,4 +70,5 @@ fn test_upsert() {
     })
     .push_to_driver(&mut driver);
     assert_eq!(driver.prql(), "s'INSERT INTO accounts (id, tier, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET (tier, created_at, updated_at, deleted_at) = ($2, $3, $4, $5)'");
+    assert_eq!(driver.sql(), "INSERT INTO accounts (id, tier, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET (tier, created_at, updated_at, deleted_at) = ($2, $3, $4, $5)");
 }

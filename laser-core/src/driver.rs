@@ -34,6 +34,10 @@ impl Driver {
         prqlc::compile(&self.prql, opts).expect("must compile prql")
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.prql.is_empty()
+    }
+
     pub fn push(&mut self, prql: impl Display) {
         use std::fmt::Write as _;
 
@@ -52,13 +56,13 @@ impl Driver {
             .expect("must format placeholder");
     }
 
-    pub async fn execute<'c>(
+    pub async fn execute_without_compilation<'c>(
         self,
         executor: impl Executor<'c, Database = Postgres>,
     ) -> sqlx::Result<<Postgres as Database>::QueryResult> {
         use sqlx::QueryBuilder;
 
-        QueryBuilder::with_arguments(self.sql(), self.arguments)
+        QueryBuilder::with_arguments(self.prql, self.arguments)
             .build()
             .execute(executor)
             .await

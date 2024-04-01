@@ -9,6 +9,7 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).unwrap();
     let ident = &ast.ident;
 
+    // get the fields from this struct
     let fields = match &ast.data {
         Data::Struct(data) => match &data.fields {
             Fields::Named(named) => &named.named,

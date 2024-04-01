@@ -9,9 +9,21 @@ use crate::{
     driver::{Driver, PushPrql},
     from::from,
     page::{select_page_info, select_page_items, Pagination, TotalCount},
+    row::{upsert, Row},
     sort::Sort,
     table::Table,
 };
+
+pub async fn save_one<'c, E, R>(executor: E, row: R) -> sqlx::Result<()>
+where
+    E: Executor<'c, Database = Postgres>,
+    R: Row + Table,
+{
+    let mut driver = Driver::new();
+    upsert(row).push_to_driver(&mut driver);
+    driver.execute_without_compilation(executor).await?;
+    Ok(())
+}
 
 pub async fn load_one<'c, E, F, R>(executor: E, filter: F) -> sqlx::Result<Option<R>>
 where
