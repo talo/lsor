@@ -4,6 +4,7 @@ use laser_core::{
     driver::{Driver, PushPrql},
     filter::Filterable,
     row::{upsert_into, IsPk, Row},
+    sort::{Order, Sorting},
     table::table,
 };
 use sqlx::{postgres::PgRow, FromRow, Type};
@@ -15,10 +16,57 @@ pub struct Metadata {
     pub tags: Vec<String>,
 }
 
-pub struct MetadataFilter {
-    pub name: <Option<String> as Filterable>::Filter,
-    pub description: <Option<String> as Filterable>::Filter,
-    pub tags: <Vec<String> as Filterable>::Filter,
+pub enum MetadataFilter {
+    Name(<Option<String> as Filterable>::Filter),
+    Description(<Option<String> as Filterable>::Filter),
+    Tags(<Vec<String> as Filterable>::Filter),
+}
+
+pub enum MetadataSort {
+    Name(Order),
+    Description(Order),
+}
+
+impl PushPrql for MetadataSort {
+    fn push_to_driver(&self, driver: &mut Driver) {
+        match self {
+            Self::Name(_) => {
+                col("name").push_to_driver(driver);
+            }
+            Self::Description(_) => {
+                col("description").push_to_driver(driver);
+            }
+        }
+    }
+}
+
+impl Sorting for MetadataSort {
+    fn order(&self) -> Order {
+        match self {
+            Self::Name(order) => *order,
+            Self::Description(order) => *order,
+        }
+    }
+
+    fn flip(&self) -> impl Sorting {
+        match self {
+            Self::Name(order) => Self::Name(order.flip()),
+            Self::Description(order) => Self::Description(order.flip()),
+        }
+    }
+
+    fn push_to_driver_with_order(&self, driver: &mut Driver) {
+        match self {
+            Self::Name(order) => {
+                order.push_to_driver(driver);
+                col("name").push_to_driver(driver);
+            }
+            Self::Description(order) => {
+                order.push_to_driver(driver);
+                col("description").push_to_driver(driver);
+            }
+        }
+    }
 }
 
 impl Row for Metadata {

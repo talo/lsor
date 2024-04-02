@@ -199,8 +199,8 @@ pub struct SQL {
 
 impl PushPrql for SQL {
     fn push_to_driver(&self, driver: &mut crate::driver::Driver) {
-        driver.push("s\'");
+        driver.push("s\"");
         driver.push(self.sql);
-        driver.push('\'');
+        driver.push('\"');
     }
 }

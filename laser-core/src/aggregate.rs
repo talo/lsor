@@ -1,8 +1,4 @@
-use crate::{
-    column::ColumnName,
-    driver::PushPrql,
-    sort::{Sort, Sorted},
-};
+use crate::{column::ColumnName, driver::PushPrql, sort::Sorted};
 
 pub struct Aggregate<Query, Expr> {
     pub query: Query,
@@ -15,7 +11,7 @@ impl<Query, Expr> Aggregate<Query, Expr> {
         self
     }
 
-    pub fn sort<By>(self, sort: Sort<By>) -> Sorted<Self, By> {
+    pub fn sort<Sort>(self, sort: Sort) -> Sorted<Self, Sort> {
         Sorted { query: self, sort }
     }
 }

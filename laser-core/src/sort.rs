@@ -1,58 +1,105 @@
+use async_graphql::Enum;
+use chrono::{DateTime, Utc};
+use uuid::Uuid;
+
 use crate::{
+    cursor::{Cursor, Iterable},
     driver::{Driver, PushPrql},
     take::Taken,
 };
 
-pub trait SortedBy {
-    type By;
+/// The implementation of `PushPrql` must only push the expression that is being
+/// ordered by. It must not push the order itself.
+pub trait Sorting: PushPrql {
+    fn order(&self) -> Order;
+    fn flip(&self) -> impl Sorting;
+    fn push_to_driver_with_order(&self, driver: &mut Driver);
+}
 
-    fn sorted_by(&self) -> &Sort<Self::By>;
+impl<T> Sorting for &T
+where
+    T: Sorting,
+{
+    fn order(&self) -> Order {
+        (*self).order()
+    }
+
+    fn flip(&self) -> impl Sorting {
+        (*self).flip()
+    }
+
+    fn push_to_driver_with_order(&self, driver: &mut Driver) {
+        (*self).push_to_driver_with_order(driver)
+    }
+}
+
+pub trait SortedBy {
+    fn sorting(&self) -> impl Sorting;
 }
 
 impl<T> SortedBy for &T
 where
     T: SortedBy,
 {
-    type By = T::By;
-
-    fn sorted_by(&self) -> &Sort<Self::By> {
-        (*self).sorted_by()
+    fn sorting(&self) -> impl Sorting {
+        (*self).sorting()
     }
 }
 
-pub enum Sort<By> {
-    Asc(By),
-    Desc(By),
+#[derive(Clone, Copy, Debug, Enum, Eq, PartialEq)]
+pub enum Order {
+    Asc,
+    Desc,
 }
 
-impl<By> Sort<By> {
-    pub fn by(&self) -> &By {
+impl Order {
+    pub fn flip(&self) -> Self {
         match self {
-            Sort::Asc(by) => by,
-            Sort::Desc(by) => by,
-        }
-    }
-
-    pub fn flip(&self) -> Sort<&By> {
-        match self {
-            Sort::Asc(by) => Sort::Desc(by),
-            Sort::Desc(by) => Sort::Asc(by),
-        }
-    }
-
-    pub fn as_ref(&self) -> Sort<&By> {
-        match self {
-            Sort::Asc(by) => Sort::Asc(by),
-            Sort::Desc(by) => Sort::Desc(by),
+            Self::Asc => Self::Desc,
+            Self::Desc => Self::Asc,
         }
     }
 
     pub fn is_asc(&self) -> bool {
-        matches!(self, Sort::Asc(_))
+        matches!(self, Self::Asc)
     }
 
     pub fn is_desc(&self) -> bool {
-        matches!(self, Sort::Desc(_))
+        matches!(self, Self::Desc)
+    }
+}
+
+impl PushPrql for Order {
+    fn push_to_driver(&self, driver: &mut Driver) {
+        if let Self::Desc = self {
+            driver.push('-');
+        }
+    }
+}
+
+pub struct Sort<By> {
+    pub order: Order,
+    pub by: By,
+}
+
+impl<By> Sorting for Sort<By>
+where
+    By: PushPrql,
+{
+    fn order(&self) -> Order {
+        self.order
+    }
+
+    fn flip(&self) -> impl Sorting {
+        Sort {
+            order: self.order.flip(),
+            by: &self.by,
+        }
+    }
+
+    fn push_to_driver_with_order(&self, driver: &mut Driver) {
+        self.order.push_to_driver(driver);
+        self.by.push_to_driver(driver);
     }
 }
 
@@ -61,31 +108,27 @@ where
     By: PushPrql,
 {
     fn push_to_driver(&self, driver: &mut Driver) {
-        match self {
-            Sort::Asc(by) => by.push_to_driver(driver),
-            Sort::Desc(by) => {
-                driver.push("-");
-                by.push_to_driver(driver);
-            }
-        }
+        self.order.push_to_driver(driver);
+        self.by.push_to_driver(driver);
     }
 }
 
-pub struct Sorted<Query, By> {
+pub struct Sorted<Query, Sort> {
     pub query: Query,
-    pub sort: Sort<By>,
+    pub sort: Sort,
 }
 
-impl<Query, By> Sorted<Query, By> {
+impl<Query, Sort> Sorted<Query, Sort> {
     pub fn take(&self, n: usize) -> Taken<&Self> {
         Taken { query: self, n }
     }
 }
 
-impl<Query, By> SortedBy for Sorted<Query, By> {
-    type By = By;
-
-    fn sorted_by(&self) -> &Sort<Self::By> {
+impl<Query, Sort> SortedBy for Sorted<Query, Sort>
+where
+    Sort: Sorting,
+{
+    fn sorting(&self) -> impl Sorting {
         &self.sort
     }
 }
@@ -93,19 +136,121 @@ impl<Query, By> SortedBy for Sorted<Query, By> {
 impl<Query, Sort> PushPrql for Sorted<Query, Sort>
 where
     Query: PushPrql,
-    Sort: PushPrql,
+    Sort: Sorting,
 {
     fn push_to_driver(&self, driver: &mut Driver) {
         self.query.push_to_driver(driver);
-        driver.push("\nsort {");
-        self.sort.push_to_driver(driver);
-        driver.push("}");
+        driver.push("\nsort { ");
+        self.sort.push_to_driver_with_order(driver);
+        driver.push(" }");
     }
 }
 
+pub trait SortBy<By> {
+    fn sort_by(by: By) -> Sort<By>;
+}
+
+impl<By> SortBy<By> for i32
+where
+    By: PushPrql,
+{
+    fn sort_by(by: By) -> Sort<By> {
+        Sort {
+            order: Order::Asc,
+            by,
+        }
+    }
+}
+
+impl<By> SortBy<By> for String
+where
+    By: PushPrql,
+{
+    fn sort_by(by: By) -> Sort<By> {
+        Sort {
+            order: Order::Asc,
+            by,
+        }
+    }
+}
+
+macro_rules! impl_sortable {
+    ($t:ty, $i:ident, $c:expr) => {
+        impl Sortable for $t {
+            type Sort = $i;
+        }
+
+        impl Sortable for Option<$t> {
+            type Sort = $i;
+        }
+
+        #[derive(Clone, Copy, Debug, Enum, Eq, PartialEq)]
+        pub enum $i {
+            Asc,
+            Desc,
+        }
+
+        impl Iterable for $i {
+            fn cursor(&self) -> Cursor {
+                $c
+            }
+        }
+
+        impl $i {
+            pub fn order(&self) -> Order {
+                match self {
+                    Self::Asc => Order::Desc,
+                    Self::Desc => Order::Asc,
+                }
+            }
+
+            pub fn flip_as_self(&self) -> Self {
+                match self {
+                    Self::Asc => Self::Desc,
+                    Self::Desc => Self::Asc,
+                }
+            }
+
+            pub fn push_to_driver_with_lhs(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+                lhs.push_to_driver(driver);
+            }
+
+            pub fn push_to_driver_with_order_with_lhs(
+                &self,
+                lhs: &dyn PushPrql,
+                driver: &mut Driver,
+            ) {
+                match self {
+                    Self::Asc => {
+                        lhs.push_to_driver(driver);
+                    }
+                    Self::Desc => {
+                        driver.push('-');
+                        lhs.push_to_driver(driver);
+                    }
+                }
+            }
+        }
+    };
+}
+
+pub trait Sortable {
+    type Sort;
+}
+
+impl_sortable!(i32, I32Sort, Cursor::I32);
+impl_sortable!(String, StringSort, Cursor::String);
+impl_sortable!(Uuid, UuidSort, Cursor::Uuid);
+impl_sortable!(DateTime<Utc>, DateTimeSort, Cursor::DateTime);
+
 #[cfg(test)]
 mod test {
-    use crate::{column::col, cond::gt, from::from, table::table};
+    use crate::{
+        column::{col, json},
+        cond::gt,
+        from::from,
+        table::table,
+    };
 
     use super::*;
 
@@ -160,5 +305,24 @@ mod test {
             driver.sql(),
             "SELECT * FROM users WHERE age > $1 ORDER BY age"
         );
+    }
+
+    #[test]
+    fn test_sort_json() {
+        let mut driver = Driver::new();
+        {
+            from(table("users"))
+                .sort(json(col("info")).get("age").asc())
+                .push_to_driver(&mut driver);
+        }
+        assert_eq!(driver.sql(), "WITH table_0 AS (SELECT *, info->'age' AS _expr_0 FROM users) SELECT * FROM table_0 ORDER BY _expr_0");
+
+        let mut driver = Driver::new();
+        {
+            from(table("users"))
+                .sort(json(col("info")).get("age").desc())
+                .push_to_driver(&mut driver);
+        }
+        assert_eq!(driver.sql(), "WITH table_0 AS (SELECT *, info->'age' AS _expr_0 FROM users) SELECT * FROM table_0 ORDER BY _expr_0 DESC");
     }
 }

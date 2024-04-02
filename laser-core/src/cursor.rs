@@ -7,38 +7,41 @@ use uuid::Uuid;
 use crate::var::Var;
 
 pub trait Iterable {
-    fn cursor() -> Cursor;
+    fn cursor(&self) -> Cursor;
 }
 
 impl<T> Iterable for Option<T>
 where
-    T: Iterable,
+    T: Default + Iterable,
 {
-    fn cursor() -> Cursor {
-        <T as Iterable>::cursor()
+    fn cursor(&self) -> Cursor {
+        match self {
+            Some(v) => v.cursor(),
+            None => T::default().cursor(),
+        }
     }
 }
 
 impl Iterable for i32 {
-    fn cursor() -> Cursor {
+    fn cursor(&self) -> Cursor {
         Cursor::I32
     }
 }
 
 impl Iterable for String {
-    fn cursor() -> Cursor {
+    fn cursor(&self) -> Cursor {
         Cursor::String
     }
 }
 
 impl Iterable for Uuid {
-    fn cursor() -> Cursor {
+    fn cursor(&self) -> Cursor {
         Cursor::Uuid
     }
 }
 
 impl Iterable for DateTime<Utc> {
-    fn cursor() -> Cursor {
+    fn cursor(&self) -> Cursor {
         Cursor::DateTime
     }
 }

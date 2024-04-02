@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::{
     driver::{Driver, PushPrql},
-    sort::{Sort, Sorted},
+    sort::Sorted,
     take::Taken,
 };
 
@@ -14,7 +14,7 @@ pub struct Filtered<Query, Filter> {
 }
 
 impl<Query, Filter> Filtered<Query, Filter> {
-    pub fn sort<By>(&self, sort: Sort<By>) -> Sorted<&Self, By> {
+    pub fn sort<Sort>(&self, sort: Sort) -> Sorted<&Self, Sort> {
         Sorted { query: self, sort }
     }
 
@@ -81,30 +81,36 @@ pub enum I32Filter {
     Le(i32),
 }
 
-impl PushPrql for I32Filter {
-    fn push_to_driver(&self, driver: &mut Driver) {
+impl I32Filter {
+    pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" == ");
                 driver.push_bind(x);
             }
             Self::Ne(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" != ");
                 driver.push_bind(x);
             }
             Self::Gt(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" > ");
                 driver.push_bind(x);
             }
             Self::Ge(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" >= ");
                 driver.push_bind(x);
             }
             Self::Lt(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" < ");
                 driver.push_bind(x);
             }
             Self::Le(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" <= ");
                 driver.push_bind(x);
             }
@@ -121,34 +127,60 @@ pub enum StringFilter {
     Ge(String),
     Lt(String),
     Le(String),
+    Like(String),
+    In(Vec<String>),
 }
 
-impl PushPrql for StringFilter {
-    fn push_to_driver(&self, driver: &mut Driver) {
+impl StringFilter {
+    pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" == ");
                 driver.push_bind(x);
             }
             Self::Ne(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" != ");
                 driver.push_bind(x);
             }
             Self::Gt(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" > ");
                 driver.push_bind(x);
             }
             Self::Ge(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" >= ");
                 driver.push_bind(x);
             }
             Self::Lt(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" < ");
                 driver.push_bind(x);
             }
             Self::Le(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" <= ");
                 driver.push_bind(x);
+            }
+            Self::Like(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" s\"");
+                driver.push(" LIKE ");
+                driver.push_bind(x);
+                driver.push('\"');
+            }
+            Self::In(xs) => {
+                lhs.push_to_driver(driver);
+                driver.push(" s\"IN (");
+                for (i, x) in xs.iter().enumerate() {
+                    if i > 0 {
+                        driver.push(", ");
+                    }
+                    driver.push_bind(x);
+                }
+                driver.push(")\"");
             }
         }
     }
@@ -162,20 +194,22 @@ pub enum UuidFilter {
     In(Vec<Uuid>),
 }
 
-impl PushPrql for UuidFilter {
-    fn push_to_driver(&self, driver: &mut Driver) {
+impl UuidFilter {
+    pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" == ");
                 driver.push_bind(x);
             }
             Self::Ne(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" != ");
                 driver.push_bind(x);
             }
             Self::In(xs) => {
-                driver.push("s\"");
-                driver.push(" IN (");
+                lhs.push_to_driver(driver);
+                driver.push(" s\"IN (");
                 for (i, x) in xs.iter().enumerate() {
                     if i > 0 {
                         driver.push(", ");
@@ -199,30 +233,36 @@ pub enum DateTimeFilter {
     Le(DateTime<Utc>),
 }
 
-impl PushPrql for DateTimeFilter {
-    fn push_to_driver(&self, driver: &mut Driver) {
+impl DateTimeFilter {
+    pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" == ");
                 driver.push_bind(x);
             }
             Self::Ne(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" != ");
                 driver.push_bind(x);
             }
             Self::Gt(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" > ");
                 driver.push_bind(x);
             }
             Self::Ge(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" >= ");
                 driver.push_bind(x);
             }
             Self::Lt(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" < ");
                 driver.push_bind(x);
             }
             Self::Le(x) => {
+                lhs.push_to_driver(driver);
                 driver.push(" <= ");
                 driver.push_bind(x);
             }
@@ -236,13 +276,14 @@ pub enum TagFilter {
     In(Vec<String>),
 }
 
-impl PushPrql for TagFilter {
-    fn push_to_driver(&self, driver: &mut Driver) {
+impl TagFilter {
+    pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
             Self::In(xs) => {
-                driver.push("s\" @> ");
+                lhs.push_to_driver(driver);
+                driver.push(" s\"@> ");
                 driver.push_bind(xs);
-                driver.push('\"');
+                driver.push('"');
             }
         }
     }
@@ -255,13 +296,15 @@ pub enum BoolFilter {
     False,
 }
 
-impl PushPrql for BoolFilter {
-    fn push_to_driver(&self, driver: &mut Driver) {
+impl BoolFilter {
+    pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
             Self::True => {
+                lhs.push_to_driver(driver);
                 driver.push(" == true");
             }
             Self::False => {
+                lhs.push_to_driver(driver);
                 driver.push(" == false");
             }
         }

@@ -1,14 +1,16 @@
 use chrono::{DateTime, Utc};
 use laser::{
+    column::col,
     driver::{Driver, PushPrql},
-    filter::{DateTimeFilter, UuidFilter},
+    filter::{DateTimeFilter, I32Filter, UuidFilter},
     row::upsert,
-    Filter, Row, Type,
+    sort::{DateTimeSort, I32Sort, Sorting, StringSort, UuidSort},
+    Filter, Row, Sort, Type,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Clone, Copy, Debug, Eq, Filter, PartialEq, Row)]
+#[derive(Clone, Copy, Debug, Eq, Filter, PartialEq, Row, Sort)]
 pub struct Metadata {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -24,19 +26,21 @@ pub enum AccountTier {
     Enterprise,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Filter, PartialEq, Row, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Filter, PartialEq, Row, Serialize, Sort)]
 #[laser(json)]
 pub struct AccountConfig {
     pub x: i32,
     pub y: String,
-    pub z: bool,
+    pub z: Uuid,
 }
 
-#[derive(Clone, Debug, Eq, Filter, PartialEq, Row)]
+#[derive(Clone, Debug, Eq, Filter, PartialEq, Row, Sort)]
 #[laser(table = "accounts")]
 pub struct Account {
     #[laser(pk)]
     pub id: Uuid,
+
+    #[laser(skip_sort)]
     pub tier: AccountTier,
 
     pub config: AccountConfig,
@@ -48,8 +52,8 @@ pub struct Account {
 #[test]
 fn test_enum_filter() {
     let mut driver = Driver::new();
-    AccountTierFilter::Eq(AccountTier::Free).push_to_driver(&mut driver);
-    assert_eq!(driver.prql(), " == $1");
+    AccountTierFilter::Eq(AccountTier::Free).push_to_driver(&col("tier"), &mut driver);
+    assert_eq!(driver.prql(), "tier == $1");
 }
 
 #[test]
@@ -68,6 +72,50 @@ fn test_embedded_filter() {
 }
 
 #[test]
+fn test_json_filter() {
+    let mut driver = Driver::new();
+    AccountFilter::Config(AccountConfigFilter::X(I32Filter::Eq(1))).push_to_driver(&mut driver);
+    assert_eq!(driver.prql(), "s\"config->'x'\" == $1");
+}
+
+#[test]
+fn test_struct_sort() {
+    use laser::driver::PushPrql;
+
+    let mut driver = Driver::new();
+    AccountSort::Id(UuidSort::Desc).push_to_driver(&mut driver);
+    assert_eq!(driver.prql(), "id");
+
+    let mut driver = Driver::new();
+    AccountSort::Id(UuidSort::Desc).push_to_driver_with_order(&mut driver);
+    assert_eq!(driver.prql(), "-id");
+}
+
+#[test]
+fn test_embedded_sort() {
+    let mut driver = Driver::new();
+    AccountSort::Metadata(MetadataSort::CreatedAt(DateTimeSort::Desc)).push_to_driver(&mut driver);
+    assert_eq!(driver.prql(), "created_at");
+
+    let mut driver = Driver::new();
+    AccountSort::Metadata(MetadataSort::CreatedAt(DateTimeSort::Desc))
+        .push_to_driver_with_order(&mut driver);
+    assert_eq!(driver.prql(), "-created_at");
+}
+
+#[test]
+fn test_json_sort() {
+    let mut driver = Driver::new();
+    AccountSort::Config(AccountConfigSort::X(I32Sort::Desc)).push_to_driver(&mut driver);
+    assert_eq!(driver.prql(), "s\"config->'x'\"");
+
+    let mut driver = Driver::new();
+    AccountSort::Config(AccountConfigSort::Y(StringSort::Desc))
+        .push_to_driver_with_order(&mut driver);
+    assert_eq!(driver.prql(), "-s\"config->'y'\"");
+}
+
+#[test]
 fn test_upsert() {
     let mut driver = Driver::new();
     upsert(Account {
@@ -76,7 +124,7 @@ fn test_upsert() {
         config: AccountConfig {
             x: 1,
             y: "hello".to_string(),
-            z: true,
+            z: Uuid::max(),
         },
         metadata: Metadata {
             created_at: Utc::now(),

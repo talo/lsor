@@ -70,12 +70,15 @@ pub struct SelectPageInfo<Query> {
 impl<Query> PushPrql for SelectPageInfo<Query>
 where
     Query: SortedBy + PushPrql,
-    <Query as SortedBy>::By: PushPrql,
 {
     fn push_to_driver(&self, driver: &mut crate::driver::Driver) {
-        let sort = self.query.sorted_by();
+        use super::sort::Sorting;
+
+        let sorting = self.query.sorting();
+        let order = sorting.order();
         let start = self.cursor.decode(&self.start);
         let end = self.cursor.decode(&self.end);
+
         Aggregate {
             query: &self.query,
             aggregations: vec![
@@ -84,9 +87,9 @@ where
                     col("has_prev_page"),
                     &gt(
                         sum(case([when(if_then_else(
-                            sort.is_asc(),
-                            || lt(sort.by(), &start),
-                            || gt(sort.by(), &start),
+                            order.is_asc(),
+                            || lt(&sorting, &start),
+                            || gt(&sorting, &start),
                         ))
                         .then(one())])),
                         zero(),
@@ -96,9 +99,9 @@ where
                     col("has_next_page"),
                     &gt(
                         sum(case([when(if_then_else(
-                            sort.is_asc(),
-                            || gt(sort.by(), &end),
-                            || lt(sort.by(), &end),
+                            order.is_asc(),
+                            || gt(&sorting, &end),
+                            || lt(&sorting, &end),
                         ))
                         .then(one())])),
                         zero(),
@@ -118,10 +121,12 @@ pub struct SelectPageItems<Query> {
 impl<Query> PushPrql for SelectPageItems<Query>
 where
     Query: SortedBy + PushPrql,
-    <Query as SortedBy>::By: PushPrql,
 {
     fn push_to_driver(&self, driver: &mut crate::driver::Driver) {
-        let sort = self.query.sorted_by();
+        use super::sort::Sorting;
+
+        let sorting = self.query.sorting();
+        let order = sorting.order();
 
         let after = self
             .pagination
@@ -141,21 +146,21 @@ where
             query: &self.query,
             filter: and(
                 if_then_else(
-                    sort.is_asc(),
-                    || gt(sort.by(), &after),
-                    || lt(sort.by(), &after),
+                    order.is_asc(),
+                    || gt(&sorting, &after),
+                    || lt(&sorting, &after),
                 ),
                 if_then_else(
-                    sort.is_asc(),
-                    || lt(sort.by(), &before),
-                    || gt(sort.by(), &before),
+                    order.is_asc(),
+                    || lt(&sorting, &before),
+                    || gt(&sorting, &before),
                 ),
             ),
         }
         .take(self.pagination.first)
-        .sort(sort.flip())
+        .sort(sorting.flip())
         .take(self.pagination.last)
-        .sort(sort.as_ref())
+        .sort(&sorting)
         .push_to_driver(driver);
     }
 }
