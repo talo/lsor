@@ -185,6 +185,7 @@ macro_rules! impl_sortable {
         }
 
         #[derive(Clone, Copy, Debug, Enum, Eq, PartialEq)]
+        #[graphql(rename_items = "snake_case")]
         pub enum $i {
             Asc,
             Desc,
