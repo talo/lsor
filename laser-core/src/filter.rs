@@ -50,6 +50,18 @@ impl Filterable for i32 {
     type Filter = I32Filter;
 }
 
+impl Filterable for i64 {
+    type Filter = I64Filter;
+}
+
+impl Filterable for u32 {
+    type Filter = I32Filter; // Yes, this is intentional, Postgres doesn't support u32
+}
+
+impl Filterable for u64 {
+    type Filter = I64Filter; // Yes, this is intentional, Postgres doesn't support u64
+}
+
 impl Filterable for String {
     type Filter = StringFilter;
 }
@@ -82,6 +94,54 @@ pub enum I32Filter {
 }
 
 impl I32Filter {
+    pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        match self {
+            Self::Eq(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" == ");
+                driver.push_bind(x);
+            }
+            Self::Ne(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" != ");
+                driver.push_bind(x);
+            }
+            Self::Gt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" > ");
+                driver.push_bind(x);
+            }
+            Self::Ge(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" >= ");
+                driver.push_bind(x);
+            }
+            Self::Lt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" < ");
+                driver.push_bind(x);
+            }
+            Self::Le(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" <= ");
+                driver.push_bind(x);
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, OneofObject)]
+#[graphql(rename_fields = "snake_case")]
+pub enum I64Filter {
+    Eq(i64),
+    Ne(i64),
+    Gt(i64),
+    Ge(i64),
+    Lt(i64),
+    Le(i64),
+}
+
+impl I64Filter {
     pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {

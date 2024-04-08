@@ -162,6 +162,18 @@ where
     }
 }
 
+impl<By> SortBy<By> for u64
+where
+    By: PushPrql,
+{
+    fn sort_by(by: By) -> Sort<By> {
+        Sort {
+            order: Order::Asc,
+            by,
+        }
+    }
+}
+
 impl<By> SortBy<By> for String
 where
     By: PushPrql,
@@ -240,6 +252,9 @@ pub trait Sortable {
 }
 
 impl_sortable!(i32, I32Sort, Cursor::I32);
+impl_sortable!(i64, I64Sort, Cursor::I64);
+impl_sortable!(u32, U32Sort, Cursor::I32);
+impl_sortable!(u64, U64Sort, Cursor::I64);
 impl_sortable!(String, StringSort, Cursor::String);
 impl_sortable!(Uuid, UuidSort, Cursor::Uuid);
 impl_sortable!(DateTime<Utc>, DateTimeSort, Cursor::DateTime);

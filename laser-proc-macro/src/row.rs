@@ -177,7 +177,7 @@ pub fn expand_derive_json_row(ast: DeriveInput) -> TokenStream {
             }
         }
 
-        impl #impl_generics_with_sqlx_lifetime ::sqlx::Encode<'__sqlx__EncodeDecode, ::sqlx::Postgres> for #ident {
+        impl #impl_generics_with_sqlx_lifetime ::sqlx::Encode<'__sqlx__EncodeDecode, ::sqlx::Postgres> for #ident #ty_generics #where_clause {
             fn encode_by_ref(&self, buf: &mut <::sqlx::Postgres as ::sqlx::database::HasArguments<'__sqlx__EncodeDecode>>::ArgumentBuffer) -> ::sqlx::encode::IsNull {
                 ::serde_json::to_value(self)
                     .expect("must serialize json")
@@ -185,13 +185,19 @@ pub fn expand_derive_json_row(ast: DeriveInput) -> TokenStream {
             }
         }
 
-        impl #impl_generics_with_sqlx_lifetime ::sqlx::Decode<'__sqlx__EncodeDecode, ::sqlx::Postgres> for #ident {
+        impl #impl_generics_with_sqlx_lifetime ::sqlx::Decode<'__sqlx__EncodeDecode, ::sqlx::Postgres> for #ident #ty_generics #where_clause {
             fn decode(
                 value: <::sqlx::Postgres as ::sqlx::database::HasValueRef<'__sqlx__EncodeDecode>>::ValueRef,
             ) -> ::std::result::Result<Self, ::sqlx::error::BoxDynError> {
                 Ok(::serde_json::from_value(::sqlx::types::JsonValue::decode(
                     value,
                 )?)?)
+            }
+        }
+
+        impl #impl_generics_with_sqlx_lifetime ::sqlx::postgres::PgHasArrayType for #ident #ty_generics #where_clause {
+            fn array_type_info() -> ::sqlx::postgres::PgTypeInfo {
+                ::sqlx::types::JsonValue::array_type_info()
             }
         }
     };

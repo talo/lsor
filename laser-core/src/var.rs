@@ -19,6 +19,7 @@ pub fn lit(x: impl Into<Literal>) -> Literal {
 pub enum Var {
     Bool(bool),
     I32(i32),
+    I64(i64),
     String(String),
     Uuid(Uuid),
     DateTime(DateTime<Utc>),
@@ -29,6 +30,7 @@ impl PushPrql for Var {
         match self {
             Self::Bool(x) => driver.push_bind(x),
             Self::I32(x) => driver.push_bind(x),
+            Self::I64(x) => driver.push_bind(x),
             Self::String(x) => driver.push_bind(x),
             Self::Uuid(x) => driver.push_bind(x),
             Self::DateTime(x) => driver.push_bind(x),
@@ -40,6 +42,7 @@ impl PushPrql for Var {
 pub enum Literal {
     Bool(bool),
     I32(i32),
+    I64(i64),
     String(String),
     Uuid(Uuid),
 }
@@ -53,6 +56,12 @@ impl From<bool> for Literal {
 impl From<i32> for Literal {
     fn from(x: i32) -> Self {
         Self::I32(x)
+    }
+}
+
+impl From<i64> for Literal {
+    fn from(x: i64) -> Self {
+        Self::I64(x)
     }
 }
 
@@ -73,6 +82,7 @@ impl PushPrql for Literal {
         match self {
             Self::Bool(x) => driver.push(x),
             Self::I32(x) => driver.push(x),
+            Self::I64(x) => driver.push(x),
             Self::String(x) => driver.push(x),
             Self::Uuid(x) => driver.push(x),
         };
