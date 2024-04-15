@@ -76,10 +76,12 @@ impl Row for Metadata {
             .chain(Some((col(stringify!(tags)), false)).into_iter())
     }
 
-    fn column_values(&self) -> impl Iterator<Item = (&dyn PushPrql, bool)> {
-        (Some((&self.name as &_, false)).into_iter())
-            .chain(Some((&self.description as &_, false)).into_iter())
-            .chain(Some((&self.tags as &_, false)).into_iter())
+    fn push_column_values(&self, driver: &mut Driver) {
+        self.name.push_to_driver(driver);
+        driver.push(", ");
+        self.description.push_to_driver(driver);
+        driver.push(", ");
+        self.tags.push_to_driver(driver);
     }
 }
 
@@ -142,7 +144,7 @@ pub struct AccountFilter {
 
 impl Row for Account {
     fn column_names() -> impl Iterator<Item = (ColumnName, IsPk)> {
-        (Some((col(stringify!(id)), false)).into_iter())
+        (Some((col(stringify!(id)), true)).into_iter())
             .chain(Some((col(stringify!(created_at)), false)).into_iter())
             .chain(Some((col(stringify!(updated_at)), false)).into_iter())
             .chain(Some((col(stringify!(deleted_at)), false)).into_iter())
@@ -150,13 +152,18 @@ impl Row for Account {
             .chain(Metadata::column_names())
     }
 
-    fn column_values(&self) -> impl Iterator<Item = (&dyn PushPrql, IsPk)> {
-        (Some((&self.id as &_, true)).into_iter())
-            .chain(Some((&self.created_at as &_, false)).into_iter())
-            .chain(Some((&self.updated_at as &_, false)).into_iter())
-            .chain(Some((&self.deleted_at as &_, false)).into_iter())
-            .chain(Some((&self.tier as &_, false)).into_iter())
-            .chain(self.metadata.column_values())
+    fn push_column_values(&self, driver: &mut Driver) {
+        self.id.push_to_driver(driver);
+        driver.push(", ");
+        self.created_at.push_to_driver(driver);
+        driver.push(", ");
+        self.updated_at.push_to_driver(driver);
+        driver.push(", ");
+        self.deleted_at.push_to_driver(driver);
+        driver.push(", ");
+        self.tier.push_to_driver(driver);
+        driver.push(", ");
+        self.metadata.push_column_values(driver);
     }
 }
 
@@ -165,16 +172,8 @@ impl Row for &Account {
         Account::column_names()
     }
 
-    fn column_values(&self) -> impl Iterator<Item = (&dyn PushPrql, IsPk)> {
-        [
-            (&self.id as &dyn PushPrql, true),
-            (&self.created_at as &dyn PushPrql, false),
-            (&self.updated_at as &dyn PushPrql, false),
-            (&self.deleted_at as &dyn PushPrql, false),
-            (&self.tier as &dyn PushPrql, false),
-        ]
-        .into_iter()
-        .chain(self.metadata.column_values())
+    fn push_column_values(&self, driver: &mut Driver) {
+        (*self).push_column_values(driver);
     }
 }
 
@@ -229,14 +228,8 @@ fn test_column_values() {
             tags: vec!["tag".to_string()],
         },
     };
-    let column_values = account.column_values().collect::<Vec<_>>();
     let mut driver = Driver::new();
-    for (i, (push_prql, _is_pk)) in column_values.into_iter().enumerate() {
-        if i > 0 {
-            driver.push(", ");
-        }
-        push_prql.push_to_driver(&mut driver);
-    }
+    account.push_column_values(&mut driver);
     assert_eq!(driver.prql(), "$1, $2, $3, $4, $5, $6, $7, $8");
 }
 
@@ -256,5 +249,5 @@ fn test_upsert() {
     };
     let mut driver = Driver::new();
     upsert_into(table("accounts"), &account).push_to_driver(&mut driver);
-    assert_eq!(driver.prql(), "s'INSERT INTO accounts (id, created_at, updated_at, deleted_at, tier, name, description, tags) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (id) DO UPDATE SET (created_at, updated_at, deleted_at, tier, name, description, tags) = ($2, $3, $4, $5, $6, $7, $8)'");
+    assert_eq!(driver.prql(), "INSERT INTO accounts (id, created_at, updated_at, deleted_at, tier, name, description, tags) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (id) DO UPDATE SET (created_at, updated_at, deleted_at, tier, name, description, tags) = ($2, $3, $4, $5, $6, $7, $8)");
 }

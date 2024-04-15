@@ -17,7 +17,7 @@ pub fn expand_derive_filter(input: TokenStream) -> TokenStream {
 
 fn expand_derive_filter_for_struct(
     ast: &DeriveInput,
-    attrs: &Vec<Attribute>,
+    attrs: &[Attribute],
     data: &DataStruct,
 ) -> TokenStream {
     if util::has_json_attr(attrs) {
@@ -25,7 +25,7 @@ fn expand_derive_filter_for_struct(
     }
 
     let ident = &ast.ident;
-    let filter_ident = util::concat_idents(&ident, &Ident::new("Filter", Span::call_site()));
+    let filter_ident = util::concat_idents(ident, &Ident::new("Filter", Span::call_site()));
 
     let fields = match &data.fields {
         Fields::Named(fields) => fields,
@@ -101,7 +101,7 @@ fn expand_derive_filter_for_struct(
 
 fn expand_derive_json_filter_for_struct(
     ast: &DeriveInput,
-    _attrs: &Vec<Attribute>,
+    _attrs: &[Attribute],
     data: &DataStruct,
 ) -> TokenStream {
     let ident = &ast.ident;
@@ -179,7 +179,7 @@ fn expand_derive_json_filter_for_struct(
 
 fn expand_derive_filter_for_enum(
     ast: &DeriveInput,
-    attrs: &Vec<Attribute>,
+    attrs: &[Attribute],
     _data: &DataEnum,
 ) -> TokenStream {
     if util::has_json_attr(attrs) {

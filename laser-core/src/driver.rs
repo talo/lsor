@@ -133,6 +133,24 @@ impl PushPrql for i32 {
     }
 }
 
+impl PushPrql for i64 {
+    fn push_to_driver(&self, driver: &mut Driver) {
+        driver.push_bind(self);
+    }
+}
+
+impl PushPrql for u32 {
+    fn push_to_driver(&self, driver: &mut Driver) {
+        driver.push_bind(*self as i32);
+    }
+}
+
+impl PushPrql for u64 {
+    fn push_to_driver(&self, driver: &mut Driver) {
+        driver.push_bind(*self as i64);
+    }
+}
+
 impl PushPrql for bool {
     fn push_to_driver(&self, driver: &mut Driver) {
         driver.push_bind(self);

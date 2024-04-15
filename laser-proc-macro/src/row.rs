@@ -1,7 +1,9 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, GenericParam, Lifetime, LifetimeDef};
+use syn::{
+    parse_quote, Data, DeriveInput, Fields, GenericParam, Lifetime, LifetimeDef, WherePredicate,
+};
 
 use crate::util;
 
@@ -39,17 +41,15 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
         }
     });
 
+    let num_filtered_fields = fields
+        .iter()
+        .filter(|field| !util::has_skip_attr(&field.attrs))
+        .count();
+
     // expand the implementation of Row::column_names
-    let column_names_impl = fields.iter().enumerate().map(|(i, field)| {
-        let field_ident = field.ident.as_ref().unwrap();
-
-        let skip = util::has_skip_attr(&field.attrs);
-        if skip {
-            return quote! { #field_ident: ::std::default::Default::default(), };
-        }
-
+    let column_names_impl = fields.iter().filter(|field| !util::has_skip_attr(&field.attrs)).enumerate().map(|(i, field)| {
         let flat = util::has_flatten_attr(&field.attrs);
-        let postfix = if i < fields.len() - 1 {
+        let postfix = if i < num_filtered_fields - 1 {
             quote! { .chain }
         } else {
             quote! { }
@@ -65,30 +65,32 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
     });
 
     // expand the implementation of Row::column_values
-    let column_values_impl = fields.iter().enumerate().map(|(i, field)| {
-        let field_ident = field.ident.as_ref().unwrap();
+    let push_column_values_impl = fields
+        .iter()
+        .filter(|field| !util::has_skip_attr(&field.attrs))
+        .enumerate()
+        .map(|(i, field)| {
+            let postfix = if i < num_filtered_fields - 1 {
+                quote! { driver.push(", "); }
+            } else {
+                quote! {}
+            };
 
-        let skip = util::has_skip_attr(&field.attrs);
-        if skip {
-            return quote! { #field_ident: ::std::default::Default::default(), };
-        }
+            let field_ident = field.ident.as_ref().unwrap();
 
-        let flat = util::has_flatten_attr(&field.attrs);
-        let postfix = if i < fields.len() - 1 {
-            quote! { .chain }
-        } else {
-            quote! {}
-        };
+            let json = util::has_json_attr(&field.attrs);
 
-        let field_ident = field.ident.as_ref().unwrap();
-
-        if flat {
-            quote! { (self.#field_ident.column_values()) #postfix }
-        } else {
-            let field_pk = util::has_pk_attr(&field.attrs);
-            quote! { (Some((&self.#field_ident as &_, #field_pk)).into_iter()) #postfix }
-        }
-    });
+            if json {
+                quote! { driver.push_bind(::sqlx::types::Json(&self.#field_ident)); #postfix }
+            } else {
+                let flat = util::has_flatten_attr(&field.attrs);
+                if flat {
+                    quote! { self.#field_ident.push_column_values(driver); #postfix }
+                } else {
+                    quote! { self.#field_ident.push_to_driver(driver); #postfix }
+                }
+            }
+        });
 
     // capture the generics before we modify them with the new liftime
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
@@ -111,10 +113,11 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
                 #(#column_names_impl)*
             }
 
-            fn column_values(&self) -> impl ::std::iter::Iterator<Item = (&dyn ::laser::driver::PushPrql, bool)> {
+            fn push_column_values(&self, driver: &mut ::laser::driver::Driver) {
+                use ::laser::driver::PushPrql;
                 use ::laser::row::Row;
 
-                #(#column_values_impl)*
+                #(#push_column_values_impl)*
             }
         }
     };
@@ -148,8 +151,31 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-pub fn expand_derive_json_row(ast: DeriveInput) -> TokenStream {
+pub fn expand_derive_json_row(mut ast: DeriveInput) -> TokenStream {
     let ident = &ast.ident;
+
+    // modify generic parameters to make sure they are `Send`
+    let mut needs_where_clause = false;
+    for param in ast.generics.params.iter() {
+        if let GenericParam::Type(..) = param {
+            needs_where_clause = true;
+        }
+    }
+    if needs_where_clause {
+        ast.generics.make_where_clause();
+    }
+    for param in ast.generics.params.iter() {
+        if let GenericParam::Type(type_param) = param {
+            let ident = &type_param.ident;
+            let predicate: WherePredicate = parse_quote!(#ident: ::std::marker::Sync);
+            ast.generics
+                .where_clause
+                .as_mut()
+                .unwrap()
+                .predicates
+                .push(predicate);
+        }
+    }
 
     // capture the generics before we modify them with the new liftime
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();

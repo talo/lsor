@@ -54,20 +54,18 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
                     sort.push_to_driver(driver);
                 },
             });
+        } else if has_json_attr {
+            push_to_driver_impls.push(quote! {
+                #sort_ident::#field_ident_camel_case(sort) => {
+                    sort.push_to_driver_with_lhs(&::laser::column::json(lhs).get(stringify!(#field_ident)), driver);
+                },
+            });
         } else {
-            if has_json_attr {
-                push_to_driver_impls.push(quote! {
-                    #sort_ident::#field_ident_camel_case(sort) => {
-                        sort.push_to_driver_with_lhs(&::laser::column::json(lhs).get(stringify!(#field_ident)), driver);
-                    },
-                });
-            } else {
-                push_to_driver_impls.push(quote! {
-                    #sort_ident::#field_ident_camel_case(sort) => {
-                        sort.push_to_driver_with_lhs(&::laser::column::col(stringify!(#field_ident)), driver);
-                    },
-                });
-            }
+            push_to_driver_impls.push(quote! {
+                #sort_ident::#field_ident_camel_case(sort) => {
+                    sort.push_to_driver_with_lhs(&::laser::column::col(stringify!(#field_ident)), driver);
+                },
+            });
         }
         order_impls.push(quote! {
             #sort_ident::#field_ident_camel_case(sort) => sort.order(),
@@ -83,20 +81,18 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
                     sort.push_to_driver_with_order(driver);
                 },
             });
+        } else if has_json_attr {
+            push_to_driver_with_order_impls.push(quote! {
+                #sort_ident::#field_ident_camel_case(sort) => {
+                    sort.push_to_driver_with_order_with_lhs(&::laser::column::json(lhs).get(stringify!(#field_ident)), driver);
+                },
+            });
         } else {
-            if has_json_attr {
-                push_to_driver_with_order_impls.push(quote! {
-                    #sort_ident::#field_ident_camel_case(sort) => {
-                        sort.push_to_driver_with_order_with_lhs(&::laser::column::json(lhs).get(stringify!(#field_ident)), driver);
-                    },
-                });
-            } else {
-                push_to_driver_with_order_impls.push(quote! {
-                    #sort_ident::#field_ident_camel_case(sort) => {
-                        sort.push_to_driver_with_order_with_lhs(&::laser::column::col(stringify!(#field_ident)), driver);
-                    },
-                });
-            }
+            push_to_driver_with_order_impls.push(quote! {
+                #sort_ident::#field_ident_camel_case(sort) => {
+                    sort.push_to_driver_with_order_with_lhs(&::laser::column::col(stringify!(#field_ident)), driver);
+                },
+            });
         }
         cursor_impls.push(quote! {
             #sort_ident::#field_ident_camel_case(x) => {
@@ -183,7 +179,7 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
         }
 
         impl #sort_ident {
-            pub fn cursor(self) -> ::laser::cursor::Cursor {
+            pub fn cursor(&self) -> ::laser::cursor::Cursor {
                 match self {
                     #(#cursor_impls)*
                 }

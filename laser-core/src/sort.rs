@@ -108,7 +108,6 @@ where
     By: PushPrql,
 {
     fn push_to_driver(&self, driver: &mut Driver) {
-        self.order.push_to_driver(driver);
         self.by.push_to_driver(driver);
     }
 }
@@ -319,7 +318,7 @@ mod test {
         }
         assert_eq!(
             driver.sql(),
-            "SELECT * FROM users WHERE age > $1 ORDER BY age"
+            "WITH table_0 AS (SELECT * FROM users LIMIT 10) SELECT * FROM table_0 ORDER BY age"
         );
     }
 

@@ -17,7 +17,7 @@ pub(crate) fn snake_case_to_camel_case(s: &str) -> String {
         .collect()
 }
 
-pub(crate) fn collect_table_attr(attrs: &Vec<Attribute>) -> Option<String> {
+pub(crate) fn collect_table_attr(attrs: &[Attribute]) -> Option<String> {
     for attr in attrs {
         if !attr.path.is_ident("laser") {
             // ignore non-laser attributes
@@ -57,7 +57,7 @@ pub(crate) fn collect_table_attr(attrs: &Vec<Attribute>) -> Option<String> {
     None
 }
 
-pub(crate) fn collect_filter_attrs(attrs: &Vec<Attribute>) -> Vec<String> {
+pub(crate) fn collect_filter_attrs(attrs: &[Attribute]) -> Vec<String> {
     for attr in attrs {
         if !attr.path.is_ident("laser") {
             // ignore non-laser attributes
@@ -90,27 +90,27 @@ pub(crate) fn collect_filter_attrs(attrs: &Vec<Attribute>) -> Vec<String> {
     vec![]
 }
 
-pub(crate) fn has_pk_attr(attrs: &Vec<Attribute>) -> bool {
+pub(crate) fn has_pk_attr(attrs: &[Attribute]) -> bool {
     has_any_attr(&["pk", "primary_key"], attrs)
 }
 
-pub(crate) fn has_flatten_attr(attrs: &Vec<Attribute>) -> bool {
+pub(crate) fn has_flatten_attr(attrs: &[Attribute]) -> bool {
     has_any_attr(&["flat", "flatten"], attrs)
 }
 
-pub(crate) fn has_skip_attr(attrs: &Vec<Attribute>) -> bool {
+pub(crate) fn has_skip_attr(attrs: &[Attribute]) -> bool {
     has_any_attr(&["skip"], attrs)
 }
 
-pub(crate) fn has_skip_filter_attr(attrs: &Vec<Attribute>) -> bool {
+pub(crate) fn has_skip_filter_attr(attrs: &[Attribute]) -> bool {
     has_any_attr(&["skip", "skip_filter"], attrs)
 }
 
-pub(crate) fn has_skip_sort_attr(attrs: &Vec<Attribute>) -> bool {
+pub(crate) fn has_skip_sort_attr(attrs: &[Attribute]) -> bool {
     has_any_attr(&["skip", "skip_sort"], attrs)
 }
 
-pub(crate) fn has_json_attr(attrs: &Vec<Attribute>) -> bool {
+pub(crate) fn has_json_attr(attrs: &[Attribute]) -> bool {
     has_any_attr(&["json"], attrs)
 }
 

@@ -10,8 +10,8 @@ use crate::{
     from::from,
     page::{select_page_info, select_page_items, Pagination, TotalCount},
     row::{upsert, Row},
-    sort::Sort,
     table::Table,
+    Sorting,
 };
 
 pub async fn save_one<'c, E, R>(executor: E, row: R) -> sqlx::Result<()>
@@ -47,13 +47,13 @@ where
 pub async fn load_page<'c, E, F, S, R>(
     executor: E,
     filter: F,
-    sort: Sort<S>,
+    sort: S,
     pagination: Pagination,
 ) -> sqlx::Result<Connection<String, R, TotalCount>>
 where
     E: Copy + Executor<'c, Database = Postgres>,
     F: PushPrql,
-    S: PushPrql,
+    S: PushPrql + Sorting,
     for<'r> R: FromRow<'r, PgRow> + OutputType + Table,
 {
     use sqlx::Row;
