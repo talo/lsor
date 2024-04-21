@@ -1,8 +1,8 @@
 # Lsor
 
 Lsor is an opinionated kind-of-ORM-but-not-really that allows you to write SQL
-statements using Rust (through an unholy marriage between Async-GraphQL, PRQL
-and SQLX).
+statements using Rust (through an unholy marriage between [Async-GraphQL](https://github.com/async-graphql/async-graphql), [PRQL](https://github.com/prql/prql)
+and [SQLX](https://github.com/launchbadge/sqlx)).
 
 ```rs
 #[derive(Filter, Row, Sort)]
@@ -14,7 +14,7 @@ pub struct User {
 }
 ```
 
-Now we can query this over GraphQL, and `lsor` will have auto-magically generated
+Now we can query this over GraphQL, and Lsor will have auto-magically generated
 the necessary `UserFilter` and `UserSort` types.
 
 ```graphql
@@ -85,7 +85,7 @@ pub struct User {
 }
 ```
 
-Again, nothing crazier. Arguably even less crazy than the already tame `Token`. But, now are ready to define our first GraphQL query:
+Again, nothing crazy. Arguably even less crazy than the already tame `Token`. But, now are ready to define our first GraphQL query:
 
 ```rs
 #[ComplexObject(rename_fields = "snake_case")]
@@ -137,13 +137,15 @@ impl User {
 }
 ```
 
+A bit crazier, but upon closer inspection it is mostly boilerplate. The actual data access logic is stupidly simple.
+
 This is all you need for a fully GraphQL specification-compliant connection resolver. The `lsor::load_page` function will take care of the heavy lifting for you, and will return a `Connection` object that you can return to the client.
 
 If you want to take a look under-the-hood at how `lsor::load_page` works, then head on over to the `lsor::page` module in this crate. It is nothing complicated, but it is actually a pretty good example of what's possible with `lsor`.
 
 ### GraphQL query
 
-The auto-magical creation of the `TokenFilter` and `TokenSort` types means that we can now write a GraphQL query that looks like this:
+The auto-magical creation of the `TokenFilter` and `TokenSort` types means that we can now write GraphQL queries that looks like this:
 
 ```graphql
 query Q1 {
@@ -163,7 +165,7 @@ query Q1 {
 }
 ```
 
-This query will return a list of tokens that belong to the user that is currently logged in, and that were created after the 1st of January 2021. The tokens will be sorted by their `updated_at` field in ascending order.
+This query will return a list of tokens that belong to the user that is currently logged in, and that were created after the 1st of January 2021. The tokens will be sorted by their `updated_at` field in ascending order. Lsor has taken care of all the necessary PRQL/SQL code to make this work.
 
 Pretty neat, eh? 
 
@@ -219,8 +221,8 @@ async fn queries_and_mutations(
 }
 ```
 
-### What is PRQL's in all this?
+### Why PRQL
 
-Lsor takes your Rust expressions and uses them to emit PRQL. This PRQL is then compiles into SQL (specificially for Postgres) using SQLX.
+Lsor takes your Rust expressions and uses them to emit PRQL. This PRQL is then compiled into SQL (specificially for Postgres) using SQLX.
 
-Why? Because going directly to SQL is both incredibly annoying to do, and also has soundness and completeness issues due to some fundamental differences between the kinds of language that SQL is compared to Rust. Luckily for us, the good folks over at PRQL have done all the hard work.
+Why? Because going directly into SQL is both incredibly annoying to do, and also has soundness and completeness issues due to some fundamental differences between SQL and Rust. Luckily for us, the good folks over at PRQL have done all the hard work.
