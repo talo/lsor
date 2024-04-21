@@ -32,7 +32,10 @@ impl Driver {
         };
 
         match prqlc::compile(&self.prql, opts) {
-            Ok(sql) => sql,
+            Ok(sql) => {
+                tracing::debug!("compiling prql:\n{}\ninto sql:\n{}", &self.prql, &sql);
+                sql
+            }
             Err(e) => {
                 tracing::error!("bad prql:\n{}", &self.prql);
                 Err(e).expect("must compile prql")
