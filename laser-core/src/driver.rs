@@ -31,7 +31,13 @@ impl Driver {
             ..Default::default()
         };
 
-        prqlc::compile(&self.prql, opts).expect("must compile prql")
+        match prqlc::compile(&self.prql, opts) {
+            Ok(sql) => sql,
+            Err(e) => {
+                tracing::error!("bad prql:\n{}", &self.prql);
+                Err(e).expect("must compile prql")
+            }
+        }
     }
 
     pub fn is_empty(&self) -> bool {
