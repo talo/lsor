@@ -2,6 +2,9 @@
 name = "lsor"
 version = "0.1.0"
 edition = "2021"
+description = "An opinionated kind-of-ORM-but-not-really that allows you to write SQL
+statements using Rust"
+license = "MIT"
 
 [dependencies]
 lsor-core = { path = "../lsor-core" }
