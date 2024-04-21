@@ -26,6 +26,7 @@ fn expand_derive_filter_for_struct(
 
     let ident = &ast.ident;
     let filter_ident = util::concat_idents(ident, &Ident::new("Filter", Span::call_site()));
+    let table = util::collect_table_attr(attrs);
 
     let fields = match &data.fields {
         Fields::Named(fields) => fields,
@@ -64,11 +65,21 @@ fn expand_derive_filter_for_struct(
 
         let flat = util::has_flatten_attr(&field.attrs);
         if flat {
-            Some(quote! { #filter_ident::#field_ident_camel_case(filter) => filter.push_to_driver(driver), })
+            Some(quote! { #filter_ident::#field_ident_camel_case(filter) => filter.push_to_driver_with_table_name(tn, driver), })
         } else {
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                filter.push_to_driver(&::laser::column::col(stringify!(#field_ident)), driver);
+                filter.push_to_driver(&::laser::table::dot(tn, ::laser::column::col(stringify!(#field_ident))), driver);
             }})
+        }
+    });
+
+    let push_to_drive_impl = table.map(|table| {
+        quote! {
+            impl ::laser::driver::PushPrql for #filter_ident {
+                fn push_to_driver(&self, driver: &mut ::laser::driver::Driver) {
+                    self.push_to_driver_with_table_name(&::laser::table::table(#table), driver);
+                }
+            }
         }
     });
 
@@ -85,14 +96,16 @@ fn expand_derive_filter_for_struct(
             #(#field_variants_decl)*
         }
 
-        impl ::laser::driver::PushPrql for #filter_ident {
-            fn push_to_driver(&self, driver: &mut ::laser::driver::Driver) {
+        #push_to_drive_impl
+
+        impl #filter_ident {
+            fn push_to_driver_with_table_name(&self, tn: &dyn ::laser::driver::PushPrql, driver: &mut ::laser::driver::Driver) {
                 match &self {
                     #filter_ident::All(all) => {
                         let n = all.len();
                         for (i, x) in all.iter().enumerate() {
                             driver.push('(');
-                            x.push_to_driver(driver);
+                            x.push_to_driver_with_table_name(tn, driver);
                             if i < n - 1 {
                                 driver.push(") && ");
                             } else {
@@ -104,7 +117,7 @@ fn expand_derive_filter_for_struct(
                         let n = any.len();
                         for (i, x) in any.iter().enumerate() {
                             driver.push('(');
-                            x.push_to_driver(driver);
+                            x.push_to_driver_with_table_name(tn, driver);
                             if i < n - 1 {
                                 driver.push(") || ");
                             } else {

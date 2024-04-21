@@ -35,7 +35,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{column::col, cond::gt, from::from, table::table};
+    use crate::{column::col, cond::gt, dot, eq, from::from, table::table};
 
     use super::*;
 
@@ -58,6 +58,15 @@ mod test {
                 .push_to_driver(&mut driver);
         }
         assert_eq!(driver.sql(), "SELECT * FROM users WHERE age > $1 LIMIT 10");
+
+        let mut driver = Driver::new();
+        {
+            from(table("users"))
+                .filter(eq(table("users").dot(col("sub")), 1234567890))
+                .take(1)
+                .push_to_driver(&mut driver);
+        }
+        assert_eq!(driver.sql(), "SELECT * FROM users WHERE sub = $1 LIMIT 1");
     }
 
     #[test]

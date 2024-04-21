@@ -60,7 +60,7 @@ fn test_enum_filter() {
 fn test_struct_filter() {
     let mut driver = Driver::new();
     AccountFilter::Id(UuidFilter::Eq(Uuid::max())).push_to_driver(&mut driver);
-    assert_eq!(driver.prql(), "id == $1");
+    assert_eq!(driver.prql(), "accounts.id == $1");
 
     let mut driver = Driver::new();
     AccountFilter::All(vec![
@@ -73,7 +73,7 @@ fn test_struct_filter() {
     .push_to_driver(&mut driver);
     assert_eq!(
         driver.prql(),
-        "(id == $1) && ((tier == $2) || (tier == $3))"
+        "(accounts.id == $1) && ((accounts.tier == $2) || (accounts.tier == $3))"
     );
 }
 
@@ -82,14 +82,14 @@ fn test_embedded_filter() {
     let mut driver = Driver::new();
     AccountFilter::Metadata(MetadataFilter::CreatedAt(DateTimeFilter::Eq(Utc::now())))
         .push_to_driver(&mut driver);
-    assert_eq!(driver.prql(), "created_at == $1");
+    assert_eq!(driver.prql(), "accounts.created_at == $1");
 }
 
 #[test]
 fn test_json_filter() {
     let mut driver = Driver::new();
     AccountFilter::Config(AccountConfigFilter::X(I32Filter::Eq(1))).push_to_driver(&mut driver);
-    assert_eq!(driver.prql(), "s\"config->'x'\" == $1");
+    assert_eq!(driver.prql(), "s\"accounts.config->'x'\" == $1");
 }
 
 #[test]
