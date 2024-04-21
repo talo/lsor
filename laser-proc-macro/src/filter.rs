@@ -99,7 +99,7 @@ fn expand_derive_filter_for_struct(
         #push_to_drive_impl
 
         impl #filter_ident {
-            fn push_to_driver_with_table_name(&self, tn: &dyn ::laser::driver::PushPrql, driver: &mut ::laser::driver::Driver) {
+            pub fn push_to_driver_with_table_name(&self, tn: &dyn ::laser::driver::PushPrql, driver: &mut ::laser::driver::Driver) {
                 match &self {
                     #filter_ident::All(all) => {
                         let n = all.len();
