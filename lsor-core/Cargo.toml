@@ -3,7 +3,7 @@ name = "lsor-core"
 version = "0.1.0"
 edition = "2021"
 description = "lsor-core"
-licence = "MIT"
+license = "MIT"
 
 [dependencies]
 async-graphql = { version = "7.0", features = ["chrono", "url", "uuid"] }
