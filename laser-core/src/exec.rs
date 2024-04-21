@@ -2,39 +2,43 @@ use async_graphql::{
     connection::{Connection, Edge, PageInfo},
     OutputType,
 };
-use sqlx::{postgres::PgRow, Executor, FromRow, Postgres, QueryBuilder, Row as _};
+use sqlx::{postgres::PgRow, Executor, FromRow, Postgres};
 
 use crate::{
-    all, select_page_info, select_page_items, sql::IntoSql, upsert, Columns, Cursor, OrderBy,
-    Pagination, Table, TotalCount,
+    cursor::Cursor,
+    driver::{Driver, PushPrql},
+    from::from,
+    page::{select_page_info, select_page_items, Pagination, TotalCount},
+    row::{upsert, Row},
+    table::Table,
+    Sorting,
 };
 
 pub async fn save_one<'c, E, R>(executor: E, row: R) -> sqlx::Result<()>
 where
     E: Executor<'c, Database = Postgres>,
-    R: Columns + Table,
+    R: Row + Table,
 {
-    let mut qb = QueryBuilder::default();
-    upsert(row).into_sql(&mut qb);
-    qb.build().execute(executor).await?;
+    let mut driver = Driver::new();
+    upsert(row).push_to_driver(&mut driver);
+    driver.execute_without_compilation(executor).await?;
     Ok(())
 }
 
 pub async fn load_one<'c, E, F, R>(executor: E, filter: F) -> sqlx::Result<Option<R>>
 where
     E: Executor<'c, Database = Postgres>,
-    F: IntoSql,
+    F: PushPrql,
     for<'r> R: FromRow<'r, PgRow> + Table,
 {
-    let mut qb = QueryBuilder::default();
+    let mut driver = Driver::new();
 
-    R::table()
-        .select(all())
-        .filter_by(filter)
-        .limit(1)
-        .into_sql(&mut qb);
+    from(R::table_name())
+        .filter(filter)
+        .take(1)
+        .push_to_driver(&mut driver);
 
-    qb.build()
+    driver
         .fetch_optional(executor)
         .await
         .and_then(|row| row.as_ref().map(R::from_row).transpose())
@@ -43,45 +47,29 @@ where
 pub async fn load_page<'c, E, F, S, R>(
     executor: E,
     filter: F,
-    sort: OrderBy<S>,
+    sort: S,
     pagination: Pagination,
 ) -> sqlx::Result<Connection<String, R, TotalCount>>
 where
     E: Copy + Executor<'c, Database = Postgres>,
-    F: Clone + IntoSql,
-    S: Clone + IntoSql,
+    F: PushPrql,
+    S: PushPrql + Sorting,
     for<'r> R: FromRow<'r, PgRow> + OutputType + Table,
 {
-    load_page_with_expr_list(executor, all(), filter, sort, pagination).await
-}
+    use sqlx::Row;
 
-pub async fn load_page_with_expr_list<'c, E, EL, F, S, R>(
-    executor: E,
-    expr_list: EL,
-    filter: F,
-    sort: OrderBy<S>,
-    pagination: Pagination,
-) -> sqlx::Result<Connection<String, R, TotalCount>>
-where
-    E: Copy + Executor<'c, Database = Postgres>,
-    EL: Clone + IntoSql,
-    F: Clone + IntoSql,
-    S: Clone + IntoSql,
-    for<'r> R: FromRow<'r, PgRow> + OutputType + Table,
-{
     let cursor = pagination.cursor;
-    let subquery = R::table()
-        .select(expr_list)
-        .filter_by(filter)
-        .order_by(sort);
+    let subquery = from(R::table_name()).filter(filter);
+    let subquery = subquery.sort(sort);
 
-    let mut qb = QueryBuilder::default();
-    select_page_items(subquery.clone(), pagination).into_sql(&mut qb);
-    let rows = qb.build().fetch_all(executor).await?;
+    let mut driver = Driver::new();
+    select_page_items(&subquery, pagination).push_to_driver(&mut driver);
+
+    let rows = driver.fetch_all(executor).await?;
     let edges = rows
         .into_iter()
         .map(|row| {
-            Ok(Edge::<_, _, _>::new(
+            Ok(Edge::new(
                 Cursor::infer(row.try_get_raw("cursor")?)?,
                 R::from_row(&row)?,
             ))
@@ -96,9 +84,10 @@ where
         .last()
         .map(|edge| edge.cursor.clone())
         .unwrap_or(Cursor::encode(&cursor.max()));
-    let mut qb = QueryBuilder::default();
-    select_page_info(subquery, cursor, start.clone(), end.clone()).into_sql(&mut qb);
-    let row = qb.build().fetch_one(executor).await?;
+
+    let mut driver = Driver::new();
+    select_page_info(subquery, cursor, start.clone(), end.clone()).push_to_driver(&mut driver);
+    let row = driver.fetch_one(executor).await?;
     let page_info = PageInfo {
         has_next_page: row.try_get("has_next_page")?,
         has_previous_page: row.try_get("has_prev_page")?,

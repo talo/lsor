@@ -4,41 +4,62 @@ use serde::{Deserialize, Serialize};
 use sqlx::{database::HasValueRef, Decode, Postgres, TypeInfo, ValueRef as _};
 use uuid::Uuid;
 
-use crate::literal::Literal;
+use crate::var::Var;
 
 pub trait Iterable {
-    fn cursor() -> Cursor;
+    fn cursor(&self) -> Cursor;
 }
 
 impl<T> Iterable for Option<T>
 where
-    T: Iterable,
+    T: Default + Iterable,
 {
-    fn cursor() -> Cursor {
-        <T as Iterable>::cursor()
+    fn cursor(&self) -> Cursor {
+        match self {
+            Some(v) => v.cursor(),
+            None => T::default().cursor(),
+        }
     }
 }
 
 impl Iterable for i32 {
-    fn cursor() -> Cursor {
+    fn cursor(&self) -> Cursor {
         Cursor::I32
     }
 }
 
+impl Iterable for i64 {
+    fn cursor(&self) -> Cursor {
+        Cursor::I64
+    }
+}
+
+impl Iterable for u32 {
+    fn cursor(&self) -> Cursor {
+        Cursor::I32
+    }
+}
+
+impl Iterable for u64 {
+    fn cursor(&self) -> Cursor {
+        Cursor::I64
+    }
+}
+
 impl Iterable for String {
-    fn cursor() -> Cursor {
+    fn cursor(&self) -> Cursor {
         Cursor::String
     }
 }
 
 impl Iterable for Uuid {
-    fn cursor() -> Cursor {
+    fn cursor(&self) -> Cursor {
         Cursor::Uuid
     }
 }
 
 impl Iterable for DateTime<Utc> {
-    fn cursor() -> Cursor {
+    fn cursor(&self) -> Cursor {
         Cursor::DateTime
     }
 }
@@ -46,6 +67,7 @@ impl Iterable for DateTime<Utc> {
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum Cursor {
     I32,
+    I64,
     String,
     Uuid,
     DateTime,
@@ -56,6 +78,9 @@ impl Cursor {
         Ok(match column.type_info().as_ref().name() {
             "INT" | "INTEGER" => I32Cursor::encode(
                 &<i32 as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,
+            ),
+            "BIGINT" | "BIT INTEGER" => I64Cursor::encode(
+                &<i64 as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,
             ),
             "TEXT" | "VARCHAR" => StringCursor::encode(
                 &<String as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,
@@ -75,40 +100,44 @@ impl Cursor {
         })
     }
 
-    pub fn decode(&self, encoded: &str) -> Literal {
+    pub fn decode(&self, encoded: &str) -> Var {
         match self {
-            Self::I32 => Literal::I32(I32Cursor::decode(encoded)),
-            Self::String => Literal::String(StringCursor::decode(encoded)),
-            Self::Uuid => Literal::Uuid(UuidCursor::decode(encoded)),
-            Self::DateTime => Literal::DateTime(DateTimeCursor::decode(encoded)),
+            Self::I32 => Var::I32(I32Cursor::decode(encoded)),
+            Self::I64 => Var::I64(I64Cursor::decode(encoded)),
+            Self::String => Var::String(StringCursor::decode(encoded)),
+            Self::Uuid => Var::Uuid(UuidCursor::decode(encoded)),
+            Self::DateTime => Var::DateTime(DateTimeCursor::decode(encoded)),
         }
     }
 
-    pub fn encode(literal: &Literal) -> String {
+    pub fn encode(literal: &Var) -> String {
         match literal {
-            Literal::Bool(_) => panic!("invalid cursor type: bool"),
-            Literal::I32(v) => I32Cursor::encode(v),
-            Literal::String(v) => StringCursor::encode(v),
-            Literal::Uuid(v) => UuidCursor::encode(v),
-            Literal::DateTime(v) => DateTimeCursor::encode(v),
+            Var::Bool(_) => panic!("invalid cursor type: bool"),
+            Var::I32(v) => I32Cursor::encode(v),
+            Var::I64(v) => I64Cursor::encode(v),
+            Var::String(v) => StringCursor::encode(v),
+            Var::Uuid(v) => UuidCursor::encode(v),
+            Var::DateTime(v) => DateTimeCursor::encode(v),
         }
     }
 
-    pub fn min(self) -> Literal {
+    pub fn min(self) -> Var {
         match self {
-            Self::I32 => Literal::I32(I32Cursor::min()),
-            Self::String => Literal::String(StringCursor::min()),
-            Self::Uuid => Literal::Uuid(UuidCursor::min()),
-            Self::DateTime => Literal::DateTime(DateTimeCursor::min()),
+            Self::I32 => Var::I32(I32Cursor::min()),
+            Self::I64 => Var::I64(I64Cursor::min()),
+            Self::String => Var::String(StringCursor::min()),
+            Self::Uuid => Var::Uuid(UuidCursor::min()),
+            Self::DateTime => Var::DateTime(DateTimeCursor::min()),
         }
     }
 
-    pub fn max(self) -> Literal {
+    pub fn max(self) -> Var {
         match self {
-            Self::I32 => Literal::I32(I32Cursor::max()),
-            Self::String => Literal::String(StringCursor::max()),
-            Self::Uuid => Literal::Uuid(UuidCursor::max()),
-            Self::DateTime => Literal::DateTime(DateTimeCursor::max()),
+            Self::I32 => Var::I32(I32Cursor::max()),
+            Self::I64 => Var::I64(I64Cursor::max()),
+            Self::String => Var::String(StringCursor::max()),
+            Self::Uuid => Var::Uuid(UuidCursor::max()),
+            Self::DateTime => Var::DateTime(DateTimeCursor::max()),
         }
     }
 }
@@ -116,6 +145,12 @@ impl Cursor {
 impl From<I32Cursor> for Cursor {
     fn from(_cursor: I32Cursor) -> Self {
         Self::I32
+    }
+}
+
+impl From<I64Cursor> for Cursor {
+    fn from(_cursor: I64Cursor) -> Self {
+        Self::I64
     }
 }
 
@@ -167,6 +202,39 @@ impl I32Cursor {
 
     pub fn max() -> i32 {
         i32::MAX
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub struct I64Cursor;
+
+impl I64Cursor {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn decode(encoded: &str) -> i64 {
+        base64::engine::general_purpose::STANDARD
+            .decode(encoded)
+            .ok()
+            .and_then(|buf| buf.as_slice().try_into().ok())
+            .map(i64::from_be_bytes)
+            .unwrap_or_else(|| {
+                tracing::warn!("invalid i64 cursor '{}'", encoded);
+                Self::min()
+            })
+    }
+
+    pub fn encode(decoded: &i64) -> String {
+        base64::engine::general_purpose::STANDARD.encode(decoded.to_be_bytes())
+    }
+
+    pub fn min() -> i64 {
+        i64::MIN
+    }
+
+    pub fn max() -> i64 {
+        i64::MAX
     }
 }
 
