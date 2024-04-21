@@ -88,8 +88,30 @@ fn expand_derive_filter_for_struct(
         impl ::laser::driver::PushPrql for #filter_ident {
             fn push_to_driver(&self, driver: &mut ::laser::driver::Driver) {
                 match &self {
-                    #filter_ident::All(all) => {},
-                    #filter_ident::Any(any) => {},
+                    #filter_ident::All(all) => {
+                        let n = all.len();
+                        for (i, x) in all.iter().enumerate() {
+                            driver.push('(');
+                            x.push_to_driver(driver);
+                            if i < n - 1 {
+                                driver.push(") && ");
+                            } else {
+                                driver.push(')');
+                            }
+                        }
+                    },
+                    #filter_ident::Any(any) => {
+                        let n = all.len();
+                        for (i, x) in all.iter().enumerate() {
+                            driver.push('(');
+                            x.push_to_driver(driver);
+                            if i < n - 1 {
+                                driver.push(") || ");
+                            } else {
+                                driver.push(')');
+                            }
+                        }
+                    },
                     #(#field_variants_impl)*
                 }
             }
