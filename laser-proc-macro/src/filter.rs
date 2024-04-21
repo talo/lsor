@@ -182,7 +182,7 @@ fn expand_derive_json_filter_for_struct(
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => filter.push_to_driver(driver), })
         } else {
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                filter.push_to_driver(&::laser::column::json(lhs).get(stringify!(#field_ident)), driver);
+                filter.push_to_driver(&::laser::column::json(lhs).get_text(stringify!(#field_ident)), driver);
             }})
         }
     });

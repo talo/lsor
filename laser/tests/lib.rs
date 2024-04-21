@@ -89,7 +89,7 @@ fn test_embedded_filter() {
 fn test_json_filter() {
     let mut driver = Driver::new();
     AccountFilter::Config(AccountConfigFilter::X(I32Filter::Eq(1))).push_to_driver(&mut driver);
-    assert_eq!(driver.prql(), "s\"accounts.config->'x'\" == $1");
+    assert_eq!(driver.prql(), "s\"accounts.config->>'x'\" == $1");
 }
 
 #[test]

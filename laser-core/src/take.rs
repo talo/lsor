@@ -35,7 +35,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{column::col, cond::gt, dot, eq, from::from, table::table};
+    use crate::{column::col, cond::gt, eq, from::from, table::table};
 
     use super::*;
 
