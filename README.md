@@ -1,20 +1,20 @@
-# Laser - Lightweight SQL Expressions for Rust
+# Lsor
 
-Laser is an opinionated kind-of-ORM-but-not-really that allows you to write SQL
+Lsor is an opinionated kind-of-ORM-but-not-really that allows you to write SQL
 statements using Rust (through an unholy marriage between Async-GraphQL, PRQL
 and SQLX).
 
 ```rs
 #[derive(Filter, Row, Sort)]
-#[laser(table = "users")]
+#[lsor(table = "users")]
 pub struct User {
-    #[laser(pk)]
+    #[lsor(pk)]
     pub id: Uuid,
     pub email: String,
 }
 ```
 
-Now we can query this over GraphQL, and `laser` will have auto-magically generated
+Now we can query this over GraphQL, and `lsor` will have auto-magically generated
 the necessary `UserFilter` and `UserSort` types.
 
 ```graphql
@@ -30,7 +30,7 @@ query Q1 {
 }
 ```
 
-The `laser` DSL also allows us to use the `UserFilter`, `UserSort`, and `User`
+The `lsor` DSL also allows us to use the `UserFilter`, `UserSort`, and `User`
 types to write our SQL statements.
 
 ```rs

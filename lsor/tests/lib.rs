@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use laser::{
+use lsor::{
     column::col,
     driver::{Driver, PushPrql},
     filter::{DateTimeFilter, I32Filter, UuidFilter},
@@ -18,7 +18,7 @@ pub struct Metadata {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Filter, PartialEq, async_graphql::Enum, Type)]
-#[laser("==", "!=")]
+#[lsor("==", "!=")]
 pub enum AccountTier {
     Free,
     Pro,
@@ -27,7 +27,7 @@ pub enum AccountTier {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Filter, PartialEq, Row, Serialize, Sort)]
-#[laser(json)]
+#[lsor(json)]
 pub struct AccountConfig {
     pub x: i32,
     pub y: String,
@@ -35,17 +35,17 @@ pub struct AccountConfig {
 }
 
 #[derive(Clone, Debug, Eq, Filter, PartialEq, Row, Sort)]
-#[laser(table = "accounts")]
+#[lsor(table = "accounts")]
 pub struct Account {
-    #[laser(pk)]
+    #[lsor(pk)]
     pub id: Uuid,
 
-    #[laser(skip_sort)]
+    #[lsor(skip_sort)]
     pub tier: AccountTier,
 
     pub config: AccountConfig,
 
-    #[laser(flatten)]
+    #[lsor(flatten)]
     pub metadata: Metadata,
 }
 
@@ -94,7 +94,7 @@ fn test_json_filter() {
 
 #[test]
 fn test_struct_sort() {
-    use laser::driver::PushPrql;
+    use lsor::driver::PushPrql;
 
     let mut driver = Driver::new();
     AccountSort::Id(UuidSort::Desc).push_to_driver(&mut driver);

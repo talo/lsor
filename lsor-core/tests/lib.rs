@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use laser_core::{
+use lsor_core::{
     column::{col, ColumnName},
     driver::{Driver, PushPrql},
     filter::Filterable,

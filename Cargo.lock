@@ -1209,46 +1209,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "laser"
-version = "0.1.0"
-dependencies = [
- "async-graphql",
- "chrono",
- "laser-core",
- "laser-proc-macro",
- "serde",
- "serde_json",
- "sqlx",
- "uuid",
-]
-
-[[package]]
-name = "laser-core"
-version = "0.1.0"
-dependencies = [
- "async-graphql",
- "base64",
- "chrono",
- "prqlc",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "laser-proc-macro"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "sqlx-macros-core",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1301,6 +1261,46 @@ name = "log"
 version = "0.4.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
+
+[[package]]
+name = "lsor"
+version = "0.1.0"
+dependencies = [
+ "async-graphql",
+ "chrono",
+ "lsor-core",
+ "lsor-proc-macro",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "uuid",
+]
+
+[[package]]
+name = "lsor-core"
+version = "0.1.0"
+dependencies = [
+ "async-graphql",
+ "base64",
+ "chrono",
+ "prqlc",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "lsor-proc-macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "sqlx-macros-core",
+ "syn 1.0.109",
+]
 
 [[package]]
 name = "md-5"

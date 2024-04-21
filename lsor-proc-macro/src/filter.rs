@@ -46,9 +46,7 @@ fn expand_derive_filter_for_struct(
         );
         let field_ty = &field.ty;
 
-        Some(
-            quote! { #field_ident_camel_case(<#field_ty as ::laser::filter::Filterable>::Filter), },
-        )
+        Some(quote! { #field_ident_camel_case(<#field_ty as ::lsor::filter::Filterable>::Filter), })
     });
 
     let field_variants_impl = fields.named.iter().filter_map(|field| {
@@ -68,23 +66,23 @@ fn expand_derive_filter_for_struct(
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => filter.push_to_driver_with_table_name(tn, driver), })
         } else {
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                filter.push_to_driver(&::laser::table::dot(tn, ::laser::column::col(stringify!(#field_ident))), driver);
+                filter.push_to_driver(&::lsor::table::dot(tn, ::lsor::column::col(stringify!(#field_ident))), driver);
             }})
         }
     });
 
     let push_to_drive_impl = table.map(|table| {
         quote! {
-            impl ::laser::driver::PushPrql for #filter_ident {
-                fn push_to_driver(&self, driver: &mut ::laser::driver::Driver) {
-                    self.push_to_driver_with_table_name(&::laser::table::table(#table), driver);
+            impl ::lsor::driver::PushPrql for #filter_ident {
+                fn push_to_driver(&self, driver: &mut ::lsor::driver::Driver) {
+                    self.push_to_driver_with_table_name(&::lsor::table::table(#table), driver);
                 }
             }
         }
     });
 
     let expanded = quote! {
-        impl ::laser::filter::Filterable for #ident {
+        impl ::lsor::filter::Filterable for #ident {
             type Filter = #filter_ident;
         }
 
@@ -99,7 +97,7 @@ fn expand_derive_filter_for_struct(
         #push_to_drive_impl
 
         impl #filter_ident {
-            pub fn push_to_driver_with_table_name(&self, tn: &dyn ::laser::driver::PushPrql, driver: &mut ::laser::driver::Driver) {
+            pub fn push_to_driver_with_table_name(&self, tn: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
                 match &self {
                     #filter_ident::All(all) => {
                         let n = all.len();
@@ -160,9 +158,7 @@ fn expand_derive_json_filter_for_struct(
         );
         let field_ty = &field.ty;
 
-        Some(
-            quote! { #field_ident_camel_case(<#field_ty as ::laser::filter::Filterable>::Filter), },
-        )
+        Some(quote! { #field_ident_camel_case(<#field_ty as ::lsor::filter::Filterable>::Filter), })
     });
 
     let field_variants_impl = fields.named.iter().filter_map(|field| {
@@ -182,7 +178,7 @@ fn expand_derive_json_filter_for_struct(
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => filter.push_to_driver(driver), })
         } else {
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                filter.push_to_driver(&::laser::column::json(lhs).get_text(stringify!(#field_ident)), driver);
+                filter.push_to_driver(&::lsor::column::json(lhs).get_text(stringify!(#field_ident)), driver);
             }})
         }
     });
@@ -190,7 +186,7 @@ fn expand_derive_json_filter_for_struct(
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
     let expanded = quote! {
-        impl #impl_generics ::laser::filter::Filterable for #ident #ty_generics #where_clause {
+        impl #impl_generics ::lsor::filter::Filterable for #ident #ty_generics #where_clause {
             type Filter = #filter_ident;
         }
 
@@ -201,7 +197,7 @@ fn expand_derive_json_filter_for_struct(
         }
 
         impl #filter_ident {
-            pub fn push_to_driver(&self, lhs: &dyn ::laser::driver::PushPrql, driver: &mut ::laser::driver::Driver) {
+            pub fn push_to_driver(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
                 match &self {
                     #(#field_variants_impl)*
                 }
@@ -218,7 +214,7 @@ fn expand_derive_filter_for_enum(
     _data: &DataEnum,
 ) -> TokenStream {
     if util::has_json_attr(attrs) {
-        panic!("filter does not support the #[laser(json)] attribute for enums")
+        panic!("filter does not support the #[lsor(json)] attribute for enums")
     }
 
     let ident = &ast.ident;
@@ -295,7 +291,7 @@ fn expand_derive_filter_for_enum(
         .collect::<Vec<_>>();
 
     let expanded = quote! {
-        impl ::laser::filter::Filterable for #ident {
+        impl ::lsor::filter::Filterable for #ident {
             type Filter = #filter_ident;
         }
 
@@ -306,7 +302,7 @@ fn expand_derive_filter_for_enum(
         }
 
         impl #filter_ident {
-            pub fn push_to_driver(&self, lhs: &dyn ::laser::driver::PushPrql, driver: &mut ::laser::driver::Driver) {
+            pub fn push_to_driver(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
                 match self {
                     #(#match_arms)*
                 }

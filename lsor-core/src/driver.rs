@@ -38,7 +38,7 @@ impl Driver {
             }
             Err(e) => {
                 tracing::error!("bad prql:\n{}", &self.prql);
-                Err(e).expect("must compile prql")
+                panic!("must compile prql: {}", e)
             }
         }
     }

@@ -6,12 +6,12 @@ pub(crate) mod sort;
 pub(crate) mod ty;
 pub(crate) mod util;
 
-#[proc_macro_derive(Filter, attributes(laser))]
+#[proc_macro_derive(Filter, attributes(lsor))]
 pub fn derive_filter(input: TokenStream) -> TokenStream {
     filter::expand_derive_filter(input)
 }
 
-#[proc_macro_derive(Row, attributes(laser))]
+#[proc_macro_derive(Row, attributes(lsor))]
 pub fn derive_row(input: TokenStream) -> TokenStream {
     row::expand_derive_row(input)
 }

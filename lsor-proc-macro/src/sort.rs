@@ -43,13 +43,12 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
 
         let flat = util::has_flatten_attr(&field.attrs);
 
-        sort_ident_variant_decls.push(
-            quote! { #field_ident_camel_case(<#field_ty as ::laser::sort::Sortable>::Sort), },
-        );
+        sort_ident_variant_decls
+            .push(quote! { #field_ident_camel_case(<#field_ty as ::lsor::sort::Sortable>::Sort), });
         if flat {
             push_to_driver_impls.push(quote! {
                 #sort_ident::#field_ident_camel_case(sort) => {
-                    use ::laser::driver::PushPrql;
+                    use ::lsor::driver::PushPrql;
 
                     sort.push_to_driver(driver);
                 },
@@ -57,13 +56,13 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
         } else if has_json_attr {
             push_to_driver_impls.push(quote! {
                 #sort_ident::#field_ident_camel_case(sort) => {
-                    sort.push_to_driver_with_lhs(&::laser::column::json(lhs).get(stringify!(#field_ident)), driver);
+                    sort.push_to_driver_with_lhs(&::lsor::column::json(lhs).get(stringify!(#field_ident)), driver);
                 },
             });
         } else {
             push_to_driver_impls.push(quote! {
                 #sort_ident::#field_ident_camel_case(sort) => {
-                    sort.push_to_driver_with_lhs(&::laser::column::col(stringify!(#field_ident)), driver);
+                    sort.push_to_driver_with_lhs(&::lsor::column::col(stringify!(#field_ident)), driver);
                 },
             });
         }
@@ -76,7 +75,7 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
         if flat {
             push_to_driver_with_order_impls.push(quote! {
                 #sort_ident::#field_ident_camel_case(sort) => {
-                    use ::laser::sort::Sorting;
+                    use ::lsor::sort::Sorting;
 
                     sort.push_to_driver_with_order(driver);
                 },
@@ -84,19 +83,19 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
         } else if has_json_attr {
             push_to_driver_with_order_impls.push(quote! {
                 #sort_ident::#field_ident_camel_case(sort) => {
-                    sort.push_to_driver_with_order_with_lhs(&::laser::column::json(lhs).get(stringify!(#field_ident)), driver);
+                    sort.push_to_driver_with_order_with_lhs(&::lsor::column::json(lhs).get(stringify!(#field_ident)), driver);
                 },
             });
         } else {
             push_to_driver_with_order_impls.push(quote! {
                 #sort_ident::#field_ident_camel_case(sort) => {
-                    sort.push_to_driver_with_order_with_lhs(&::laser::column::col(stringify!(#field_ident)), driver);
+                    sort.push_to_driver_with_order_with_lhs(&::lsor::column::col(stringify!(#field_ident)), driver);
                 },
             });
         }
         cursor_impls.push(quote! {
             #sort_ident::#field_ident_camel_case(x) => {
-                use ::laser::cursor::Iterable;
+                use ::lsor::cursor::Iterable;
                 x.cursor()
             }
         });
@@ -104,28 +103,28 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
 
     let trait_impls = if !has_json_attr {
         Some(quote! {
-            impl ::laser::driver::PushPrql for #sort_ident {
-                fn push_to_driver(&self, driver: &mut ::laser::driver::Driver) {
+            impl ::lsor::driver::PushPrql for #sort_ident {
+                fn push_to_driver(&self, driver: &mut ::lsor::driver::Driver) {
                     match &self {
                         #(#push_to_driver_impls)*
                     }
                 }
             }
 
-            impl ::laser::sort::Sorting for #sort_ident {
-                fn order(&self) -> ::laser::sort::Order {
+            impl ::lsor::sort::Sorting for #sort_ident {
+                fn order(&self) -> ::lsor::sort::Order {
                     match self {
                         #(#order_impls)*
                     }
                 }
 
-                fn flip(&self) -> impl ::laser::sort::Sorting {
+                fn flip(&self) -> impl ::lsor::sort::Sorting {
                     match self {
                         #(#flip_impls)*
                     }
                 }
 
-                fn push_to_driver_with_order(&self, driver: &mut ::laser::driver::Driver) {
+                fn push_to_driver_with_order(&self, driver: &mut ::lsor::driver::Driver) {
                     match &self {
                         #(#push_to_driver_with_order_impls)*
                     }
@@ -138,7 +137,7 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
 
     let non_trait_order_impl = if has_json_attr {
         Some(quote! {
-            pub fn order(&self) -> ::laser::sort::Order {
+            pub fn order(&self) -> ::lsor::sort::Order {
                 match self {
                     #(#order_impls)*
                 }
@@ -149,13 +148,13 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
     };
     let non_trait_impls = quote! {
         impl #sort_ident {
-            pub fn push_to_driver_with_lhs(&self, lhs: &dyn ::laser::driver::PushPrql, driver: &mut ::laser::driver::Driver) {
+            pub fn push_to_driver_with_lhs(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
                 match &self {
                     #(#push_to_driver_impls)*
                 }
             }
 
-            pub fn push_to_driver_with_order_with_lhs(&self, lhs: &dyn ::laser::driver::PushPrql, driver: &mut ::laser::driver::Driver) {
+            pub fn push_to_driver_with_order_with_lhs(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
                 match &self {
                     #(#push_to_driver_with_order_impls)*
                 }
@@ -174,12 +173,12 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
     let expanded = quote! {
-        impl #impl_generics ::laser::sort::Sortable for #ident #ty_generics #where_clause {
+        impl #impl_generics ::lsor::sort::Sortable for #ident #ty_generics #where_clause {
             type Sort = #sort_ident;
         }
 
         impl #sort_ident {
-            pub fn cursor(&self) -> ::laser::cursor::Cursor {
+            pub fn cursor(&self) -> ::lsor::cursor::Cursor {
                 match self {
                     #(#cursor_impls)*
                 }

@@ -56,11 +56,11 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
         };
         if flat {
             let field_type = &field.ty;
-            quote! { (<#field_type as ::laser::row::Row>::column_names()) #postfix }
+            quote! { (<#field_type as ::lsor::row::Row>::column_names()) #postfix }
         } else {
             let field_ident = field.ident.as_ref().unwrap();
             let field_pk = util::has_pk_attr(&field.attrs);
-            quote! { (Some((::laser::column::col(stringify!(#field_ident)), #field_pk)).into_iter()) #postfix }
+            quote! { (Some((::lsor::column::col(stringify!(#field_ident)), #field_pk)).into_iter()) #postfix }
         }
     });
 
@@ -97,25 +97,25 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
 
     let impl_table_trait = util::collect_table_attr(&ast.attrs).map(|table_name| {
         quote! {
-            impl #impl_generics ::laser::table::Table for #ident #ty_generics #where_clause {
-                fn table_name() -> ::laser::table::TableName {
-                    ::laser::table::table(#table_name)
+            impl #impl_generics ::lsor::table::Table for #ident #ty_generics #where_clause {
+                fn table_name() -> ::lsor::table::TableName {
+                    ::lsor::table::table(#table_name)
                 }
             }
         }
     });
 
     let impl_row_trait = quote! {
-        impl #impl_generics ::laser::row::Row for #ident #ty_generics #where_clause {
-            fn column_names() -> impl ::std::iter::Iterator<Item = (::laser::column::ColumnName, bool)> {
-                use ::laser::row::Row;
+        impl #impl_generics ::lsor::row::Row for #ident #ty_generics #where_clause {
+            fn column_names() -> impl ::std::iter::Iterator<Item = (::lsor::column::ColumnName, bool)> {
+                use ::lsor::row::Row;
 
                 #(#column_names_impl)*
             }
 
-            fn push_column_values(&self, driver: &mut ::laser::driver::Driver) {
-                use ::laser::driver::PushPrql;
-                use ::laser::row::Row;
+            fn push_column_values(&self, driver: &mut ::lsor::driver::Driver) {
+                use ::lsor::driver::PushPrql;
+                use ::lsor::row::Row;
 
                 #(#push_column_values_impl)*
             }
@@ -191,8 +191,8 @@ pub fn expand_derive_json_row(mut ast: DeriveInput) -> TokenStream {
     let (impl_generics_with_sqlx_lifetime, _ty_generics, _where_clause) = generics.split_for_impl();
 
     let expanded = quote! {
-        impl #impl_generics ::laser::driver::PushPrql for #ident #ty_generics #where_clause {
-            fn push_to_driver(&self, driver: &mut ::laser::driver::Driver) {
+        impl #impl_generics ::lsor::driver::PushPrql for #ident #ty_generics #where_clause {
+            fn push_to_driver(&self, driver: &mut ::lsor::driver::Driver) {
                 driver.push_bind(self);
             }
         }
