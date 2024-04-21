@@ -61,6 +61,20 @@ fn test_struct_filter() {
     let mut driver = Driver::new();
     AccountFilter::Id(UuidFilter::Eq(Uuid::max())).push_to_driver(&mut driver);
     assert_eq!(driver.prql(), "id == $1");
+
+    let mut driver = Driver::new();
+    AccountFilter::All(vec![
+        AccountFilter::Id(UuidFilter::Eq(Uuid::max())),
+        AccountFilter::Any(vec![
+            AccountFilter::Tier(AccountTierFilter::Eq(AccountTier::Free)),
+            AccountFilter::Tier(AccountTierFilter::Eq(AccountTier::Pro)),
+        ]),
+    ])
+    .push_to_driver(&mut driver);
+    assert_eq!(
+        driver.prql(),
+        "(id == $1) && ((tier == $2) || (tier == $3))"
+    );
 }
 
 #[test]

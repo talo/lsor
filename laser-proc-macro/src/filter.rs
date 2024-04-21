@@ -101,8 +101,8 @@ fn expand_derive_filter_for_struct(
                         }
                     },
                     #filter_ident::Any(any) => {
-                        let n = all.len();
-                        for (i, x) in all.iter().enumerate() {
+                        let n = any.len();
+                        for (i, x) in any.iter().enumerate() {
                             driver.push('(');
                             x.push_to_driver(driver);
                             if i < n - 1 {
