@@ -10,7 +10,6 @@ use crate::{
     either::if_then_else,
     expr::{case, count, sum, when},
     filter::Filtered,
-    otherwise,
     sort::SortedBy,
     var::{one, zero},
 };
