@@ -1,4 +1,4 @@
-use crate::{column::ColumnName, driver::PushPrql, sort::Sorted};
+use crate::{column::ColumnName, driver::PushPrql, sort::Sorted, SortedBy, Sorting};
 
 pub struct Derive<Query, Expr> {
     pub query: Query,
@@ -34,5 +34,14 @@ where
             expr.push_to_driver(driver);
         }
         driver.push(" }");
+    }
+}
+
+impl<Query, Expr> SortedBy for Derive<Query, Expr>
+where
+    Query: SortedBy,
+{
+    fn sorting(&self) -> impl Sorting {
+        self.query.sorting()
     }
 }
