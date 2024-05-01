@@ -10,6 +10,7 @@ use crate::{
     either::if_then_else,
     expr::{case, count, sum, when},
     filter::Filtered,
+    otherwise,
     sort::SortedBy,
     var::{one, zero},
 };
@@ -91,7 +92,8 @@ where
                             || lt(&sorting, &start),
                             || gt(&sorting, &start),
                         ))
-                        .then(one())])),
+                        .then(one())])
+                        .otherwise(zero())),
                         zero(),
                     ) as &dyn PushPrql,
                 ),
@@ -103,7 +105,8 @@ where
                             || gt(&sorting, &end),
                             || lt(&sorting, &end),
                         ))
-                        .then(one())])),
+                        .then(one())])
+                        .otherwise(zero())),
                         zero(),
                     ) as &dyn PushPrql,
                 ),
@@ -168,7 +171,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{driver::Driver, from::from, table::table, Sorting as _};
+    use crate::{driver::Driver, from::from, table::table};
 
     #[test]
     fn test_select_page_info() {
@@ -186,8 +189,10 @@ mod test {
             };
             select_page_info.push_to_driver(&mut driver);
         }
-        println!("{}", driver.prql());
-        assert_eq!(driver.sql(), "SELECT *, COUNT(*) OVER (ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS total_count, SUM(CASE WHEN created_at < $1 THEN 1 ELSE NULL END) OVER (ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) > 0 AS has_prev_page, SUM(CASE WHEN created_at > $2 THEN 1 ELSE NULL END) OVER (ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) > 0 AS has_next_page FROM page ORDER BY created_at");
+        assert_eq!(
+            driver.sql(),
+            "SELECT *, COUNT(*) OVER (ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS total_count, SUM(CASE WHEN created_at < $1 THEN 1 ELSE 0 END) OVER (ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) > 0 AS has_prev_page, SUM(CASE WHEN created_at > $2 THEN 1 ELSE 0 END) OVER (ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) > 0 AS has_next_page FROM page ORDER BY created_at"
+        );
     }
 
     #[test]
