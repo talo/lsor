@@ -60,10 +60,11 @@ where
 
     let cursor = pagination.cursor;
     let subquery = from(R::table_name()).filter(filter);
-    let subquery = subquery.derive("cursor", &sort).sort(&sort);
+    let subquery = subquery.sort(&sort);
+    let subquery_with_cursor = subquery.derive("cursor", &sort);
 
     let mut driver = Driver::new();
-    select_page_items(&subquery, pagination).push_to_driver(&mut driver);
+    select_page_items(&subquery_with_cursor, pagination).push_to_driver(&mut driver);
 
     let rows = driver.fetch_all(executor).await?;
     let edges = rows

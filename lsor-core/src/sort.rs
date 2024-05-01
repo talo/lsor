@@ -123,7 +123,7 @@ impl<Query, Sort> Sorted<Query, Sort> {
         Taken { query: self, n }
     }
 
-    pub fn derive<Expr>(self, name: &'static str, expr: Expr) -> Derive<Self, Expr> {
+    pub fn derive<Expr>(&self, name: &'static str, expr: Expr) -> Derive<&Self, Expr> {
         Derive {
             query: self,
             derivations: vec![(ColumnName { name }, expr)],

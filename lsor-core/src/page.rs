@@ -215,4 +215,28 @@ mod test {
         }
         assert_eq!(driver.sql(), "WITH table_2 AS (SELECT *, created_at AS cursor FROM page), table_1 AS (SELECT * FROM table_2 WHERE cursor < $1 AND cursor > $2 ORDER BY cursor DESC LIMIT 10), table_0 AS (SELECT * FROM table_1 ORDER BY cursor LIMIT 5) SELECT * FROM table_0 ORDER BY cursor DESC");
     }
+
+    #[test]
+    fn test_select_page_items_with_dangling_cursor() {
+        let mut driver = Driver::new();
+        {
+            let query = from(table("page")).sort(col("created_at").desc());
+            let query = query.derive("cursor", col("created_at"));
+            let cursor = Cursor::String;
+            let after = Some("after".to_string());
+            let before = Some("before".to_string());
+            let select_page_info = SelectPageItems {
+                query,
+                pagination: Pagination {
+                    cursor,
+                    after,
+                    before,
+                    first: 10,
+                    last: 5,
+                },
+            };
+            select_page_info.push_to_driver(&mut driver);
+        }
+        assert_eq!(driver.sql(), "WITH table_2 AS (SELECT *, created_at AS cursor FROM page), table_1 AS (SELECT * FROM table_2 WHERE created_at < $1 AND created_at > $2 ORDER BY created_at DESC LIMIT 10), table_0 AS (SELECT * FROM table_1 ORDER BY created_at LIMIT 5) SELECT * FROM table_0 ORDER BY created_at DESC");
+    }
 }
