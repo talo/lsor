@@ -60,7 +60,7 @@ where
 
     let cursor = pagination.cursor;
     let subquery = from(R::table_name()).filter(filter);
-    let subquery = subquery.sort(sort);
+    let subquery = subquery.derive("cursor", &sort).sort(&sort);
 
     let mut driver = Driver::new();
     select_page_items(&subquery, pagination).push_to_driver(&mut driver);

@@ -6,6 +6,7 @@ use crate::{
     driver::{Driver, PushPrql},
     sort::Sorted,
     take::Taken,
+    ColumnName, Derive,
 };
 
 pub struct Filtered<Query, Filter> {
@@ -20,6 +21,13 @@ impl<Query, Filter> Filtered<Query, Filter> {
 
     pub fn take(&self, n: usize) -> Taken<&Self> {
         Taken { query: self, n }
+    }
+
+    pub fn derive<Expr>(self, name: &'static str, expr: Expr) -> Derive<Self, Expr> {
+        Derive {
+            query: self,
+            derivations: vec![(ColumnName { name }, expr)],
+        }
     }
 }
 

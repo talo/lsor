@@ -6,6 +6,7 @@ use crate::{
     cursor::{Cursor, Iterable},
     driver::{Driver, PushPrql},
     take::Taken,
+    ColumnName, Derive,
 };
 
 /// The implementation of `PushPrql` must only push the expression that is being
@@ -120,6 +121,13 @@ pub struct Sorted<Query, Sort> {
 impl<Query, Sort> Sorted<Query, Sort> {
     pub fn take(&self, n: usize) -> Taken<&Self> {
         Taken { query: self, n }
+    }
+
+    pub fn derive<Expr>(self, name: &'static str, expr: Expr) -> Derive<Self, Expr> {
+        Derive {
+            query: self,
+            derivations: vec![(ColumnName { name }, expr)],
+        }
     }
 }
 
