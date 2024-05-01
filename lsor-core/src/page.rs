@@ -2,10 +2,10 @@ use async_graphql::SimpleObject;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    aggregate::Aggregate,
     column::col,
     cond::{and, gt, lt},
     cursor::Cursor,
+    derive_from,
     driver::PushPrql,
     either::if_then_else,
     expr::{case, count, sum, when},
@@ -79,9 +79,9 @@ where
         let start = self.cursor.decode(&self.start);
         let end = self.cursor.decode(&self.end);
 
-        Aggregate {
-            query: &self.query,
-            aggregations: vec![
+        derive_from(
+            &self.query,
+            vec![
                 (col("total_count"), &count() as &dyn PushPrql),
                 (
                     col("has_prev_page"),
@@ -108,7 +108,7 @@ where
                     ) as &dyn PushPrql,
                 ),
             ],
-        }
+        )
         .push_to_driver(driver);
     }
 }
@@ -168,15 +168,13 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{driver::Driver, from::from, table::table};
+    use crate::{driver::Driver, from::from, table::table, Sorting as _};
 
     #[test]
     fn test_select_page_info() {
         let mut driver = Driver::new();
         {
-            let query = from(table("page"))
-                .derive("cursor", col("created_at"))
-                .sort(col("cursor").asc());
+            let query = from(table("page")).sort(col("created_at").asc());
             let cursor = Cursor::String;
             let start = "start".to_string();
             let end = "end".to_string();
@@ -188,7 +186,8 @@ mod test {
             };
             select_page_info.push_to_driver(&mut driver);
         }
-        assert_eq!(driver.sql(), "WITH table_2 AS (SELECT COUNT(*) AS total_count, created_at AS _expr_0, COALESCE(SUM(CASE WHEN created_at < $1 THEN 1 ELSE NULL END), 0) AS _expr_2 FROM page), table_0 AS (SELECT total_count, _expr_2 > 0 AS has_prev_page, _expr_0, COALESCE(SUM(CASE WHEN _expr_0 > $2 THEN 1 ELSE NULL END), 0) AS _expr_1 FROM table_2), table_1 AS (SELECT total_count, has_prev_page, _expr_1 > 0 AS has_next_page, _expr_0 FROM table_0) SELECT total_count, has_prev_page, has_next_page FROM table_1");
+        println!("{}", driver.prql());
+        assert_eq!(driver.sql(), "SELECT *, COUNT(*) OVER (ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS total_count, SUM(CASE WHEN created_at < $1 THEN 1 ELSE NULL END) OVER (ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) > 0 AS has_prev_page, SUM(CASE WHEN created_at > $2 THEN 1 ELSE NULL END) OVER (ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) > 0 AS has_next_page FROM page ORDER BY created_at");
     }
 
     #[test]

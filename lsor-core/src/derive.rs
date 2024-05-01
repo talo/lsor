@@ -1,5 +1,12 @@
 use crate::{column::ColumnName, driver::PushPrql, sort::Sorted, SortedBy, Sorting};
 
+pub fn derive_from<'e, Query>(
+    query: Query,
+    derivations: Vec<(ColumnName, &'e dyn PushPrql)>,
+) -> Derive<Query, &'e dyn PushPrql> {
+    Derive { query, derivations }
+}
+
 pub struct Derive<Query, Expr> {
     pub query: Query,
     pub derivations: Vec<(ColumnName, Expr)>,
