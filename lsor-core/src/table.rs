@@ -1,4 +1,7 @@
-use crate::driver::{Driver, PushPrql};
+use crate::{
+    driver::{Driver, PushPrql},
+    Order, Sort,
+};
 
 pub fn dot<LHS, RHS>(lhs: LHS, rhs: RHS) -> Dot<LHS, RHS> {
     Dot { lhs, rhs }
@@ -33,6 +36,22 @@ impl PushPrql for TableName {
 pub struct Dot<LHS, RHS> {
     pub lhs: LHS,
     pub rhs: RHS,
+}
+
+impl<LHS, RHS> Dot<LHS, RHS> {
+    pub fn asc(self) -> Sort<Self> {
+        Sort {
+            order: Order::Asc,
+            by: self,
+        }
+    }
+
+    pub fn desc(self) -> Sort<Self> {
+        Sort {
+            order: Order::Desc,
+            by: self,
+        }
+    }
 }
 
 impl<LHS, RHS> PushPrql for Dot<LHS, RHS>
