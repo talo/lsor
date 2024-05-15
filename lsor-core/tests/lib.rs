@@ -72,8 +72,8 @@ impl Sorting for MetadataSort {
 impl Row for Metadata {
     fn column_names() -> impl Iterator<Item = (ColumnName, IsPk)> {
         (Some((col(stringify!(name)), false)).into_iter())
-            .chain(Some((col(stringify!(description)), false)).into_iter())
-            .chain(Some((col(stringify!(tags)), false)).into_iter())
+            .chain(Some((col(stringify!(description)), false)))
+            .chain(Some((col(stringify!(tags)), false)))
     }
 
     fn push_column_values(&self, driver: &mut Driver) {
@@ -145,10 +145,10 @@ pub struct AccountFilter {
 impl Row for Account {
     fn column_names() -> impl Iterator<Item = (ColumnName, IsPk)> {
         (Some((col(stringify!(id)), true)).into_iter())
-            .chain(Some((col(stringify!(created_at)), false)).into_iter())
-            .chain(Some((col(stringify!(updated_at)), false)).into_iter())
-            .chain(Some((col(stringify!(deleted_at)), false)).into_iter())
-            .chain(Some((col(stringify!(tier)), false)).into_iter())
+            .chain(Some((col(stringify!(created_at)), false)))
+            .chain(Some((col(stringify!(updated_at)), false)))
+            .chain(Some((col(stringify!(deleted_at)), false)))
+            .chain(Some((col(stringify!(tier)), false)))
             .chain(Metadata::column_names())
     }
 
