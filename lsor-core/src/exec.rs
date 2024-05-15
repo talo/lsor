@@ -88,15 +88,24 @@ where
 
     let mut driver = Driver::new();
     select_page_info(subquery, cursor, start.clone(), end.clone()).push_to_driver(&mut driver);
-    let row = driver.fetch_one(executor).await?;
+    let row = driver.fetch_optional(executor).await?;
     let page_info = PageInfo {
-        has_next_page: row.try_get("has_next_page")?,
-        has_previous_page: row.try_get("has_prev_page")?,
+        has_next_page: row
+            .as_ref()
+            .map(|x| x.try_get("has_next_page"))
+            .unwrap_or(Ok(false))?,
+        has_previous_page: row
+            .as_ref()
+            .map(|x| x.try_get("has_prev_page"))
+            .unwrap_or(Ok(false))?,
         start_cursor: Some(start),
         end_cursor: Some(end),
     };
     let total_count = TotalCount {
-        total_count: row.try_get("total_count")?,
+        total_count: row
+            .as_ref()
+            .map(|x| x.try_get("total_count"))
+            .unwrap_or(Ok(0))?,
     };
 
     let mut conn = Connection::with_additional_fields(
