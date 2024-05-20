@@ -43,6 +43,10 @@ pub struct Account {
     #[lsor(skip_sort)]
     pub tier: AccountTier,
 
+    #[lsor(skip_sort)]
+    #[lsor(skip_filter)]
+    pub tiers: Vec<AccountTier>,
+
     pub config: AccountConfig,
 
     #[lsor(flatten)]
@@ -135,6 +139,7 @@ fn test_upsert() {
     upsert(Account {
         id: Uuid::new_v4(),
         tier: AccountTier::Free,
+        tiers: vec![AccountTier::Pro],
         config: AccountConfig {
             x: 1,
             y: "hello".to_string(),
@@ -147,5 +152,8 @@ fn test_upsert() {
         },
     })
     .push_to_driver(&mut driver);
-    assert_eq!(driver.prql(), "INSERT INTO accounts (id, tier, config, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO UPDATE SET (tier, config, created_at, updated_at, deleted_at) = ($2, $3, $4, $5, $6)");
+    assert_eq!(
+        driver.prql(),
+        "INSERT INTO accounts (id, tier, tiers, config, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO UPDATE SET (tier, tiers, config, created_at, updated_at, deleted_at) = ($2, $3, $4, $5, $6, $7)"
+    );
 }
