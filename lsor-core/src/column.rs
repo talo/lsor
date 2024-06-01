@@ -71,19 +71,19 @@ impl<Col> Json<Col> {
         }
     }
 
-    pub fn get_text(self, k: &'static str) -> JsonAccessor<Col> {
-        JsonAccessor {
-            col: self.col,
-            op: JsonOp::GetText(k),
-        }
-    }
+    // pub fn get_text(self, k: &'static str) -> JsonAccessor<Col> {
+    //     JsonAccessor {
+    //         col: self.col,
+    //         op: JsonOp::GetText(k),
+    //     }
+    // }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum JsonOp {
-    At(usize),             // json -> integer -> json
-    Get(&'static str),     // json -> text -> json
-    GetText(&'static str), // json -> text ->> text
+    At(usize), // json -> integer -> json
+    Get(&'static str), // json -> text -> json
+               // GetText(&'static str), // json -> text ->> text
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -136,12 +136,11 @@ where
                 driver.push("->'");
                 driver.push(k);
                 driver.push("'");
-            }
-            JsonOp::GetText(k) => {
-                driver.push("->>'");
-                driver.push(k);
-                driver.push("'");
-            }
+            } // JsonOp::GetText(k) => {
+              //     driver.push("->>'");
+              //     driver.push(k);
+              //     driver.push("'");
+              // }
         }
         driver.push('"');
     }

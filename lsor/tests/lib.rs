@@ -122,7 +122,7 @@ fn test_json_filter() {
         &AccountFilter::Config(AccountConfigFilter::X(I32Filter::Eq(1))),
         &mut driver,
     );
-    assert_eq!(driver.prql(), "s\"accounts.config->>'x'\" == $1");
+    assert_eq!(driver.prql(), "s\"accounts.config->'x'\" == $1");
 }
 
 #[test]
