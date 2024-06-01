@@ -127,7 +127,7 @@ fn test_json_filter() {
     let mut driver = Driver::new();
     JsonAccountFilter::Tier(AccountTierFilter::Eq(AccountTier::Free))
         .push_to_driver(&lsor::col("account"), &mut driver);
-    assert_eq!(driver.prql(), "s\"accounts.config->'x'\" == $1");
+    assert_eq!(driver.prql(), "s\"account->'tier'\" == $1");
 }
 
 #[test]
