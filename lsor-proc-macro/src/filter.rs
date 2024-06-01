@@ -62,12 +62,21 @@ fn expand_derive_filter_for_struct(
         );
 
         let flat = util::has_flatten_attr(&field.attrs);
+        let json = util::has_json_attr(&field.attrs);
         if flat {
-            Some(quote! { #filter_ident::#field_ident_camel_case(filter) => filter.push_to_driver_with_table_name(tn, driver), })
-        } else {
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                filter.push_to_driver(&::lsor::table::dot(tn, ::lsor::column::col(stringify!(#field_ident))), driver);
+                    filter.push_to_driver_with_table_name(tn, driver);
             }})
+        } else {
+            if json {
+                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+                    filter.push_to_driver_as_json(&::lsor::table::dot(tn, ::lsor::column::col(stringify!(#field_ident))), driver);
+                }})
+            } else {
+                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+                    filter.push_to_driver(&::lsor::table::dot(tn, ::lsor::column::col(stringify!(#field_ident))), driver);
+                }})
+            }
         }
     });
 
@@ -88,7 +97,9 @@ fn expand_derive_filter_for_struct(
 
             let flat = util::has_flatten_attr(&field.attrs);
             if flat {
-                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => filter.push_to_driver(lhs, driver), })
+                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+                    filter.push_to_driver(lhs, driver); // TODO: THIS IS WRONG BUT I DO NOT KNOW WHY. I JUST KNOW THAT IT IS.
+                }})
             } else {
                 Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
                     filter.push_to_driver(lhs, driver);
@@ -246,11 +257,12 @@ fn expand_derive_filter_for_struct(
 
 fn expand_derive_json_filter_for_struct(
     ast: &DeriveInput,
-    _attrs: &[Attribute],
+    attrs: &[Attribute],
     data: &DataStruct,
 ) -> TokenStream {
     let ident = &ast.ident;
     let filter_ident = util::concat_idents(ident, &Ident::new("Filter", Span::call_site()));
+    let table = util::collect_table_attr(attrs);
 
     let fields = match &data.fields {
         Fields::Named(fields) => fields,
@@ -290,7 +302,7 @@ fn expand_derive_json_filter_for_struct(
             panic!("cannot use the #[lsor(flatten)] attribute with the #[lsor(json)] attribute")
         } else {
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                filter.push_to_driver(&::lsor::column::json(lhs).get(stringify!(#field_ident)), driver);
+                filter.push_to_driver_as_json(&::lsor::column::json(lhs).get(stringify!(#field_ident)), driver);
             }})
         }
     });
@@ -317,6 +329,16 @@ fn expand_derive_json_filter_for_struct(
         }
     });
 
+    let push_to_drive_impl = table.map(|table| {
+        quote! {
+            impl ::lsor::driver::PushPrql for #filter_ident {
+                fn push_to_driver(&self, driver: &mut ::lsor::driver::Driver) {
+                    self.push_to_driver_with_table_name(&::lsor::table::table(#table), driver);
+                }
+            }
+        }
+    });
+
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
     let expanded = quote! {
@@ -329,6 +351,8 @@ fn expand_derive_json_filter_for_struct(
         pub enum #filter_ident {
             #(#field_variants_decl)*
         }
+
+        // #push_to_drive_impl
 
         impl #filter_ident {
             pub fn push_to_driver(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
@@ -383,6 +407,7 @@ fn expand_derive_filter_for_enum(
         .map(|attr| match attr.as_str() {
             "==" => quote! {
                 #filter_ident::Eq(x) => {
+                    println!("NON JSON x: {:?}", x);
                     lhs.push_to_driver(driver);
                     driver.push(" == ");
                     driver.push_bind(x);
@@ -435,6 +460,7 @@ fn expand_derive_filter_for_enum(
         .map(|attr| match attr.as_str() {
             "==" => quote! {
                 #filter_ident::Eq(x) => {
+                    println!("JSON x: {:?}", ::sqlx::types::Json(x));
                     lhs.push_to_driver(driver);
                     driver.push(" == ");
                     driver.push_bind(::sqlx::types::Json(x));

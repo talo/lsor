@@ -33,11 +33,18 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
             return quote! { #field_ident: ::std::default::Default::default(), };
         }
 
+        let json = util::has_json_attr(&field.attrs);
+
         let flat = util::has_flatten_attr(&field.attrs);
         if flat {
             quote! { #field_ident: <_>::from_row(row)?, }
         } else {
-            quote! { #field_ident: row.try_get(stringify!(#field_ident))?, }
+            if json {
+                quote! { #field_ident: row.try_get::<::sqlx::types::Json<_>, _>(stringify!(#field_ident))?.0, }
+                // quote! { #field_ident: row.try_get(stringify!(#field_ident))?, }
+            } else {
+                quote! { #field_ident: row.try_get(stringify!(#field_ident))?, }
+            }
         }
     });
 

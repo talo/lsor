@@ -123,6 +123,11 @@ fn test_json_filter() {
         &mut driver,
     );
     assert_eq!(driver.prql(), "s\"accounts.config->'x'\" == $1");
+
+    let mut driver = Driver::new();
+    JsonAccountFilter::Tier(AccountTierFilter::Eq(AccountTier::Free))
+        .push_to_driver(&lsor::col("account"), &mut driver);
+    assert_eq!(driver.prql(), "s\"accounts.config->'x'\" == $1");
 }
 
 #[test]
