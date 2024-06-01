@@ -71,6 +71,58 @@ fn expand_derive_filter_for_struct(
         }
     });
 
+    let match_arms = fields
+        .named
+        .iter()
+        .filter_map(|field| {
+            let skip = util::has_skip_filter_attr(&field.attrs);
+            if skip {
+                return None;
+            }
+
+            let field_ident = field.ident.as_ref().unwrap();
+            let field_ident_camel_case = Ident::new(
+                &util::snake_case_to_camel_case(field_ident.to_string().as_str()),
+                Span::call_site(),
+            );
+
+            let flat = util::has_flatten_attr(&field.attrs);
+            if flat {
+                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => filter.push_to_driver(lhs, driver), })
+            } else {
+                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+                    filter.push_to_driver(lhs, driver);
+                }})
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let match_arms_as_json = fields
+        .named
+        .iter()
+        .filter_map(|field| {
+            let skip = util::has_skip_filter_attr(&field.attrs);
+            if skip {
+                return None;
+            }
+
+            let field_ident = field.ident.as_ref().unwrap();
+            let field_ident_camel_case = Ident::new(
+                &util::snake_case_to_camel_case(field_ident.to_string().as_str()),
+                Span::call_site(),
+            );
+
+            let flat = util::has_flatten_attr(&field.attrs);
+            if flat {
+                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => filter.push_to_driver_as_json(lhs, driver), })
+            } else {
+                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+                    filter.push_to_driver_as_json(lhs, driver);
+                }})
+            }
+        })
+        .collect::<Vec<_>>();
+
     let push_to_drive_impl = table.map(|table| {
         quote! {
             impl ::lsor::driver::PushPrql for #filter_ident {
@@ -126,6 +178,66 @@ fn expand_derive_filter_for_struct(
                     #(#field_variants_impl)*
                 }
             }
+
+            pub fn push_to_driver(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
+                match self {
+                    #filter_ident::All(all) => {
+                        let n = all.len();
+                        for (i, x) in all.iter().enumerate() {
+                            driver.push('(');
+                            x.push_to_driver(lhs, driver);
+                            if i < n - 1 {
+                                driver.push(") && ");
+                            } else {
+                                driver.push(')');
+                            }
+                        }
+                    },
+                    #filter_ident::Any(any) => {
+                        let n = any.len();
+                        for (i, x) in any.iter().enumerate() {
+                            driver.push('(');
+                            x.push_to_driver(lhs, driver);
+                            if i < n - 1 {
+                                driver.push(") || ");
+                            } else {
+                                driver.push(')');
+                            }
+                        }
+                    },
+                    #(#match_arms)*
+                }
+            }
+
+            pub fn push_to_driver_as_json(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
+                match self {
+                    #filter_ident::All(all) => {
+                        let n = all.len();
+                        for (i, x) in all.iter().enumerate() {
+                            driver.push('(');
+                            x.push_to_driver_as_json(lhs, driver);
+                            if i < n - 1 {
+                                driver.push(") && ");
+                            } else {
+                                driver.push(')');
+                            }
+                        }
+                    },
+                    #filter_ident::Any(any) => {
+                        let n = any.len();
+                        for (i, x) in any.iter().enumerate() {
+                            driver.push('(');
+                            x.push_to_driver_as_json(lhs, driver);
+                            if i < n - 1 {
+                                driver.push(") || ");
+                            } else {
+                                driver.push(')');
+                            }
+                        }
+                    },
+                    #(#match_arms_as_json)*
+                }
+            }
         }
     };
 
@@ -175,10 +287,32 @@ fn expand_derive_json_filter_for_struct(
 
         let flat = util::has_flatten_attr(&field.attrs);
         if flat {
-            Some(quote! { #filter_ident::#field_ident_camel_case(filter) => filter.push_to_driver(driver), })
+            panic!("cannot use the #[lsor(flatten)] attribute with the #[lsor(json)] attribute")
         } else {
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
                 filter.push_to_driver(&::lsor::column::json(lhs).get_text(stringify!(#field_ident)), driver);
+            }})
+        }
+    });
+
+    let field_variants_as_json_impl = fields.named.iter().filter_map(|field| {
+        let skip = util::has_skip_filter_attr(&field.attrs);
+        if skip {
+            return None;
+        }
+
+        let field_ident = field.ident.as_ref().unwrap();
+        let field_ident_camel_case = Ident::new(
+            &util::snake_case_to_camel_case(field_ident.to_string().as_str()),
+            Span::call_site(),
+        );
+
+        let flat = util::has_flatten_attr(&field.attrs);
+        if flat {
+            panic!("cannot use the #[lsor(flatten)] attribute with the #[lsor(json)] attribute")
+        } else {
+            Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+                filter.push_to_driver_as_json(&::lsor::column::json(lhs).get_text(stringify!(#field_ident)), driver);
             }})
         }
     });
@@ -200,6 +334,12 @@ fn expand_derive_json_filter_for_struct(
             pub fn push_to_driver(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
                 match &self {
                     #(#field_variants_impl)*
+                }
+            }
+
+            pub fn push_to_driver_as_json(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
+                match &self {
+                    #(#field_variants_as_json_impl)*
                 }
             }
         }
@@ -290,6 +430,58 @@ fn expand_derive_filter_for_enum(
         })
         .collect::<Vec<_>>();
 
+    let match_arms_as_json = filter_attrs
+        .iter()
+        .map(|attr| match attr.as_str() {
+            "==" => quote! {
+                #filter_ident::Eq(x) => {
+                    lhs.push_to_driver(driver);
+                    driver.push(" == ");
+                    driver.push_bind(::sqlx::types::Json(x));
+                }
+            },
+            "!=" => quote! {
+                #filter_ident::Ne(x) => {
+                    lhs.push_to_driver(driver);
+                    driver.push(" != ");
+                    driver.push_bind(::sqlx::types::Json(x));
+                }
+            },
+            "<" => quote! {
+                #filter_ident::Lt(x) => {
+                    lhs.push_to_driver(driver);
+                    driver.push(" < ");
+                    driver.push_bind(::sqlx::types::Json(x));
+                }
+            },
+            "<=" => quote! {
+                #filter_ident::Le(x) => {
+                    lhs.push_to_driver(driver);
+                    driver.push(" <= ");
+                    driver.push_bind(::sqlx::types::Json(x));
+                }
+            },
+            ">" => quote! {
+                #filter_ident::Gt(x) => {
+                    lhs.push_to_driver(driver);
+                    driver.push(" > ");
+                    driver.push_bind(::sqlx::types::Json(x));
+                }
+            },
+            ">=" => quote! {
+                #filter_ident::Ge(x) => {
+                    lhs.push_to_driver(driver);
+                    driver.push(" >= ");
+                    driver.push_bind(::sqlx::types::Json(x));
+                }
+            },
+            _ => panic!(
+                "invalid filter attribute, must be one of {}",
+                filter_attrs_str()
+            ),
+        })
+        .collect::<Vec<_>>();
+
     let expanded = quote! {
         impl ::lsor::filter::Filterable for #ident {
             type Filter = #filter_ident;
@@ -305,6 +497,12 @@ fn expand_derive_filter_for_enum(
             pub fn push_to_driver(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
                 match self {
                     #(#match_arms)*
+                }
+            }
+
+            pub fn push_to_driver_as_json(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
+                match self {
+                    #(#match_arms_as_json)*
                 }
             }
         }

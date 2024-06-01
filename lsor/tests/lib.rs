@@ -1,3 +1,4 @@
+use async_graphql::Enum;
 use chrono::{DateTime, Utc};
 use lsor::{
     column::col,
@@ -10,14 +11,14 @@ use lsor::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Clone, Copy, Debug, Eq, Filter, PartialEq, Row, Sort)]
+#[derive(Clone, Copy, Debug, Eq, Filter, PartialEq, Row, Sort, Serialize, Deserialize)]
 pub struct Metadata {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Filter, PartialEq, async_graphql::Enum, Type)]
+#[derive(Clone, Copy, Debug, Eq, Filter, PartialEq, Enum, Type, Serialize, Deserialize)]
 #[lsor("==", "!=")]
 pub enum AccountTier {
     Free,
@@ -53,6 +54,26 @@ pub struct Account {
     pub metadata: Metadata,
 }
 
+#[derive(Clone, Debug, Eq, Filter, PartialEq, Row, Sort, Serialize, Deserialize)]
+#[lsor(json, table = "accounts")]
+pub struct JsonAccount {
+    #[lsor(pk)]
+    pub id: Uuid,
+
+    #[lsor(skip_sort)]
+    pub tier: AccountTier,
+
+    #[lsor(skip_sort)]
+    #[lsor(skip_filter)]
+    pub tiers: Vec<AccountTier>,
+
+    pub config: AccountConfig,
+
+    #[lsor(skip_sort)]
+    #[lsor(skip_filter)]
+    pub metadata: Metadata,
+}
+
 #[test]
 fn test_enum_filter() {
     let mut driver = Driver::new();
@@ -63,18 +84,20 @@ fn test_enum_filter() {
 #[test]
 fn test_struct_filter() {
     let mut driver = Driver::new();
-    AccountFilter::Id(UuidFilter::Eq(Uuid::max())).push_to_driver(&mut driver);
+    PushPrql::push_to_driver(&AccountFilter::Id(UuidFilter::Eq(Uuid::max())), &mut driver);
     assert_eq!(driver.prql(), "accounts.id == $1");
 
     let mut driver = Driver::new();
-    AccountFilter::All(vec![
-        AccountFilter::Id(UuidFilter::Eq(Uuid::max())),
-        AccountFilter::Any(vec![
-            AccountFilter::Tier(AccountTierFilter::Eq(AccountTier::Free)),
-            AccountFilter::Tier(AccountTierFilter::Eq(AccountTier::Pro)),
+    PushPrql::push_to_driver(
+        &AccountFilter::All(vec![
+            AccountFilter::Id(UuidFilter::Eq(Uuid::max())),
+            AccountFilter::Any(vec![
+                AccountFilter::Tier(AccountTierFilter::Eq(AccountTier::Free)),
+                AccountFilter::Tier(AccountTierFilter::Eq(AccountTier::Pro)),
+            ]),
         ]),
-    ])
-    .push_to_driver(&mut driver);
+        &mut driver,
+    );
     assert_eq!(
         driver.prql(),
         "(accounts.id == $1) && ((accounts.tier == $2) || (accounts.tier == $3))"
@@ -84,15 +107,21 @@ fn test_struct_filter() {
 #[test]
 fn test_embedded_filter() {
     let mut driver = Driver::new();
-    AccountFilter::Metadata(MetadataFilter::CreatedAt(DateTimeFilter::Eq(Utc::now())))
-        .push_to_driver(&mut driver);
+    PushPrql::push_to_driver(
+        &AccountFilter::Metadata(MetadataFilter::CreatedAt(DateTimeFilter::Eq(Utc::now()))),
+        &mut driver,
+    );
     assert_eq!(driver.prql(), "accounts.created_at == $1");
 }
 
 #[test]
 fn test_json_filter() {
+    use lsor::driver::PushPrql;
     let mut driver = Driver::new();
-    AccountFilter::Config(AccountConfigFilter::X(I32Filter::Eq(1))).push_to_driver(&mut driver);
+    PushPrql::push_to_driver(
+        &AccountFilter::Config(AccountConfigFilter::X(I32Filter::Eq(1))),
+        &mut driver,
+    );
     assert_eq!(driver.prql(), "s\"accounts.config->>'x'\" == $1");
 }
 

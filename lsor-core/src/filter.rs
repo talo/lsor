@@ -43,6 +43,8 @@ where
     }
 }
 
+/// This trait is used to define the type `Filter` for some type `Self` that can
+/// be used to filter `Self` from the database.
 pub trait Filterable {
     type Filter;
 }
@@ -136,6 +138,10 @@ impl I32Filter {
             }
         }
     }
+
+    pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        self.push_to_driver(lhs, driver)
+    }
 }
 
 #[derive(Clone, Debug, OneofObject)]
@@ -183,6 +189,10 @@ impl I64Filter {
                 driver.push_bind(x);
             }
         }
+    }
+
+    pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        self.push_to_driver(lhs, driver)
     }
 }
 
@@ -252,6 +262,26 @@ impl StringFilter {
             }
         }
     }
+
+    pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        match self {
+            Self::Like(x) => {
+                driver.push("((");
+                lhs.push_to_driver(driver);
+                driver.push(") as text) s\"");
+                driver.push(" LIKE ");
+                driver.push_bind(x);
+                driver.push('\"');
+            }
+            Self::In(xs) => {
+                lhs.push_to_driver(driver);
+                driver.push(" s\"@> ");
+                driver.push_bind(sqlx::types::Json(xs));
+                driver.push('\"');
+            }
+            _ => self.push_to_driver(lhs, driver),
+        }
+    }
 }
 
 #[derive(Clone, Debug, OneofObject)]
@@ -285,6 +315,27 @@ impl UuidFilter {
                     driver.push_bind(x);
                 }
                 driver.push(")\"");
+            }
+        }
+    }
+
+    pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        match self {
+            Self::Eq(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" == ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Ne(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" != ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::In(xs) => {
+                lhs.push_to_driver(driver);
+                driver.push(" s\"@> ");
+                driver.push_bind(sqlx::types::Json(xs));
+                driver.push('\"');
             }
         }
     }
@@ -336,6 +387,41 @@ impl DateTimeFilter {
             }
         }
     }
+
+    pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        match self {
+            Self::Eq(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" == ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Ne(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" != ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Gt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" > ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Ge(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" >= ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Lt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" < ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Le(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" <= ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, OneofObject)]
@@ -351,6 +437,17 @@ impl TagFilter {
                 lhs.push_to_driver(driver);
                 driver.push(" s\"@> ");
                 driver.push_bind(xs);
+                driver.push('"');
+            }
+        }
+    }
+
+    pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        match self {
+            Self::In(xs) => {
+                lhs.push_to_driver(driver);
+                driver.push(" s\"@> ");
+                driver.push_bind(sqlx::types::Json(xs));
                 driver.push('"');
             }
         }
@@ -376,6 +473,10 @@ impl BoolFilter {
                 driver.push(" == false");
             }
         }
+    }
+
+    pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        self.push_to_driver(lhs, driver)
     }
 }
 

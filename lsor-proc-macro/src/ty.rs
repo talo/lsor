@@ -17,6 +17,7 @@ pub fn expand_derive_type(input: TokenStream) -> TokenStream {
                 driver.push_bind(self);
             }
         }
+        
         impl #impl_generics ::sqlx::postgres::PgHasArrayType for #ident #ty_generics #where_clause {
             fn array_type_info() -> ::sqlx::postgres::PgTypeInfo {
                 <Self as ::sqlx::postgres::PgHasArrayType>::array_type_info()
