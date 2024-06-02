@@ -266,10 +266,8 @@ impl StringFilter {
     pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
             Self::Like(x) => {
-                driver.push("((");
                 lhs.push_to_driver(driver);
-                driver.push(") as text) s\"");
-                driver.push(" LIKE ");
+                driver.push("s\"::text LIKE ");
                 driver.push_bind(x);
                 driver.push('\"');
             }
@@ -278,6 +276,36 @@ impl StringFilter {
                 driver.push(" s\"@> ");
                 driver.push_bind(sqlx::types::Json(xs));
                 driver.push('\"');
+            }
+            Self::Eq(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" == ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Ne(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" != ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Gt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" > ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Ge(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" >= ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Lt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" < ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Le(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" <= ");
+                driver.push_bind(sqlx::types::Json(x));
             }
             _ => self.push_to_driver(lhs, driver),
         }

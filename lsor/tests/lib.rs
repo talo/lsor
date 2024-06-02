@@ -8,6 +8,7 @@ use lsor::{
     sort::{DateTimeSort, I32Sort, Sorting, StringSort, UuidSort},
     Filter, Row, Sort, Type,
 };
+use lsor_core::StringFilter;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -123,6 +124,20 @@ fn test_json_filter() {
         &mut driver,
     );
     assert_eq!(driver.prql(), "s\"accounts.config->'x'\" == $1");
+
+    // TODO: support LIKE
+    // let mut driver = Driver::new();
+    // PushPrql::push_to_driver(
+    //     &AccountFilter::Config(AccountConfigFilter::Y(StringFilter::Like(
+    //         "asd".to_string(),
+    //     ))),
+    //     &mut driver,
+    // );
+    // //eprintln!("{}", driver.sql());
+    // assert_eq!(
+    //     driver.prql(),
+    //     "((s\"accounts.config->'y'\") | as text) s\" LIKE $1\""
+    // );
 
     let mut driver = Driver::new();
     JsonAccountFilter::Tier(AccountTierFilter::Eq(AccountTier::Free))
