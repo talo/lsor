@@ -2,12 +2,12 @@ use crate::{column::ColumnName, driver::PushPrql, sort::Sorted};
 
 pub struct Aggregate<Query, Expr> {
     pub query: Query,
-    pub aggregations: Vec<(ColumnName, Expr)>,
+    pub aggregations: Vec<(Option<ColumnName>, Expr)>,
 }
 
 impl<Query, Expr> Aggregate<Query, Expr> {
     pub fn aggregate(mut self, name: &'static str, expr: Expr) -> Self {
-        self.aggregations.push((ColumnName { name }, expr));
+        self.aggregations.push((Some(ColumnName { name }), expr));
         self
     }
 
@@ -29,8 +29,10 @@ where
                 driver.push(',');
             }
             driver.push(' ');
-            col.push_to_driver(driver);
-            driver.push(" = ");
+            if let Some(col) = col {
+                col.push_to_driver(driver);
+                driver.push(" = ");
+            }
             expr.push_to_driver(driver);
         }
         driver.push(" }");

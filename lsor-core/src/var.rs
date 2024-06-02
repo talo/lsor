@@ -15,6 +15,14 @@ pub fn lit(x: impl Into<Literal>) -> Literal {
     x.into()
 }
 
+pub fn null() -> Null {
+    Null
+}
+
+pub fn empty() -> Empty {
+    Empty
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Var {
     Bool(bool),
@@ -87,4 +95,18 @@ impl PushPrql for Literal {
             Self::Uuid(x) => driver.push(x),
         };
     }
+}
+
+pub struct Null;
+
+impl PushPrql for Null {
+    fn push_to_driver(&self, driver: &mut crate::driver::Driver) {
+        driver.push("null");
+    }
+}
+
+pub struct Empty;
+
+impl PushPrql for Empty {
+    fn push_to_driver(&self, _driver: &mut crate::driver::Driver) {}
 }

@@ -20,6 +20,14 @@ pub fn count() -> Count {
     Count {}
 }
 
+pub fn max<Expr>(expr: Expr) -> Max<Expr> {
+    Max { expr }
+}
+
+pub fn min<Expr>(expr: Expr) -> Min<Expr> {
+    Min { expr }
+}
+
 pub fn sub<LHS, RHS>(lhs: LHS, rhs: RHS) -> Sub<LHS, RHS> {
     Sub { lhs, rhs }
 }
@@ -146,6 +154,34 @@ where
         self.lhs.push_to_driver(driver);
         driver.push(" - ");
         self.rhs.push_to_driver(driver);
+    }
+}
+
+pub struct Max<Expr> {
+    pub expr: Expr,
+}
+
+impl<Expr> PushPrql for Max<Expr>
+where
+    Expr: PushPrql,
+{
+    fn push_to_driver(&self, driver: &mut crate::driver::Driver) {
+        driver.push("max ");
+        self.expr.push_to_driver(driver);
+    }
+}
+
+pub struct Min<Expr> {
+    pub expr: Expr,
+}
+
+impl<Expr> PushPrql for Min<Expr>
+where
+    Expr: PushPrql,
+{
+    fn push_to_driver(&self, driver: &mut crate::driver::Driver) {
+        driver.push("min ");
+        self.expr.push_to_driver(driver);
     }
 }
 

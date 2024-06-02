@@ -6,7 +6,7 @@ use crate::{
     driver::{Driver, PushPrql},
     sort::Sorted,
     take::Taken,
-    ColumnName, Derive,
+    ColumnName, Derive, Group,
 };
 
 pub struct Filtered<Query, Filter> {
@@ -27,6 +27,13 @@ impl<Query, Filter> Filtered<Query, Filter> {
         Derive {
             query: self,
             derivations: vec![(ColumnName { name }, expr)],
+        }
+    }
+
+    pub fn group(self, grouping: impl Into<Vec<ColumnName>>) -> Group<Self> {
+        Group {
+            query: self,
+            grouping: grouping.into(),
         }
     }
 }
