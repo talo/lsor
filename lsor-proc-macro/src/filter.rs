@@ -302,7 +302,7 @@ fn expand_derive_json_filter_for_struct(
             panic!("cannot use the #[lsor(flatten)] attribute with the #[lsor(json)] attribute")
         } else {
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                filter.push_to_driver_as_json(&::lsor::column::json(lhs).get(stringify!(#field_ident)), driver);
+                filter.push_to_driver_as_json(&::lsor::json(lhs).get(stringify!(#field_ident)), driver);
             }})
         }
     });
@@ -324,20 +324,21 @@ fn expand_derive_json_filter_for_struct(
             panic!("cannot use the #[lsor(flatten)] attribute with the #[lsor(json)] attribute")
         } else {
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                filter.push_to_driver_as_json(&::lsor::column::json(lhs).get(stringify!(#field_ident)), driver);
+                filter.push_to_driver_as_json(&::lsor::json(lhs).get(stringify!(#field_ident)), driver);
             }})
         }
     });
 
-    let push_to_drive_impl = table.map(|table| {
-        quote! {
-            impl ::lsor::driver::PushPrql for #filter_ident {
-                fn push_to_driver(&self, driver: &mut ::lsor::driver::Driver) {
-                    self.push_to_driver_with_table_name(&::lsor::table::table(#table), driver);
-                }
-            }
-        }
-    });
+    // // TODO: IS IT EVEN POSSIBLE TO JSON FILTER AT THE TOP LEVEL?
+    // let push_to_drive_impl = table.map(|table| {
+    //     quote! {
+    //         impl ::lsor::driver::PushPrql for #filter_ident {
+    //             fn push_to_driver(&self, driver: &mut ::lsor::driver::Driver) {
+    //                 self.push_to_driver_with_table_name(&::lsor::table::table(#table), driver);
+    //             }
+    //         }
+    //     }
+    // });
 
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 

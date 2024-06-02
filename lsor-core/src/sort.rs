@@ -268,12 +268,7 @@ impl_sortable!(DateTime<Utc>, DateTimeSort, Cursor::DateTime);
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        column::{col, json},
-        cond::gt,
-        from::from,
-        table::table,
-    };
+    use crate::{column::col, cond::gt, from::from, json::json, table::table};
 
     use super::*;
 

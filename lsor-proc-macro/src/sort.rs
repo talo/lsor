@@ -56,13 +56,13 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
         } else if has_json_attr {
             push_to_driver_impls.push(quote! {
                 #sort_ident::#field_ident_camel_case(sort) => {
-                    sort.push_to_driver_with_lhs(&::lsor::column::json(lhs).get(stringify!(#field_ident)), driver);
+                    sort.push_to_driver_with_lhs(&::lsor::json(lhs).get(stringify!(#field_ident)), driver);
                 },
             });
         } else {
             push_to_driver_impls.push(quote! {
                 #sort_ident::#field_ident_camel_case(sort) => {
-                    sort.push_to_driver_with_lhs(&::lsor::column::col(stringify!(#field_ident)), driver);
+                    sort.push_to_driver_with_lhs(&::lsor::col(stringify!(#field_ident)), driver);
                 },
             });
         }
@@ -83,7 +83,7 @@ pub fn expand_derive_sort(input: TokenStream) -> TokenStream {
         } else if has_json_attr {
             push_to_driver_with_order_impls.push(quote! {
                 #sort_ident::#field_ident_camel_case(sort) => {
-                    sort.push_to_driver_with_order_with_lhs(&::lsor::column::json(lhs).get(stringify!(#field_ident)), driver);
+                    sort.push_to_driver_with_order_with_lhs(&::lsor::json(lhs).get(stringify!(#field_ident)), driver);
                 },
             });
         } else {
