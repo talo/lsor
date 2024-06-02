@@ -4,6 +4,10 @@ pub fn add<LHS, RHS>(lhs: LHS, rhs: RHS) -> Add<LHS, RHS> {
     Add { lhs, rhs }
 }
 
+pub fn as_bigint<Expr>(expr: Expr) -> AsBigint<Expr> {
+    AsBigint { expr }
+}
+
 pub fn avg<Expr>(expr: Expr) -> Avg<Expr> {
     Avg { expr }
 }
@@ -62,6 +66,21 @@ where
         self.lhs.push_to_driver(driver);
         driver.push(" + ");
         self.rhs.push_to_driver(driver);
+    }
+}
+
+pub struct AsBigint<Expr> {
+    pub expr: Expr,
+}
+
+impl<Expr> PushPrql for AsBigint<Expr>
+where
+    Expr: PushPrql,
+{
+    fn push_to_driver(&self, driver: &mut crate::driver::Driver) {
+        driver.push('(');
+        self.expr.push_to_driver(driver);
+        driver.push(" | as bigint)");
     }
 }
 

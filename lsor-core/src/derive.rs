@@ -1,6 +1,4 @@
-use crate::{
-    column::ColumnName, driver::PushPrql, sort::Sorted, Filtered, Group, SortedBy, Sorting,
-};
+use crate::{column::ColumnName, driver::PushPrql, sort::Sorted, Filtered, SortedBy, Sorting};
 
 pub fn derive_from<Query>(
     query: Query,

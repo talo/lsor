@@ -50,7 +50,10 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{column::col, count, from::from, min, null, split_part, table::table};
+    use crate::{
+        as_bigint, avg, column::col, count, from::from, lit, min, null, split_part, sum,
+        table::table,
+    };
 
     use super::*;
 
@@ -71,5 +74,27 @@ mod test {
             .push_to_driver(&mut driver);
         assert_eq!(driver.prql(), "from jobs\nderive { name = s\"split_part(path, '#', 2)\" }\nfilter (deleted_at) == (null)\ngroup { name, status, account_id } (\naggregate { count [], created_at = min created_at })");
         assert_eq!(driver.sql(), "WITH table_0 AS (SELECT split_part(path, '#', 2) AS name, status, account_id, created_at, deleted_at FROM jobs) SELECT name, status, account_id, COUNT(*), MIN(created_at) AS created_at FROM table_0 WHERE deleted_at IS NULL GROUP BY name, status, account_id");
+    }
+
+    #[test]
+    fn test_group_with_agg_functions() {
+        let mut driver = crate::driver::Driver::new();
+        from(table("resources"))
+            .filter(col("target").eq(lit("BULLET".to_string())))
+            .group([col("target")])
+            .aggregate([
+                (Some(col("gpu_avg")), &avg(col("gpu")) as &dyn PushPrql),
+                (
+                    Some(col("total_storage")),
+                    &sum(col("storage")) as &dyn PushPrql,
+                ),
+                (
+                    Some(col("total_sus")),
+                    &as_bigint(sum(col("sus"))) as &dyn PushPrql,
+                ),
+            ])
+            .push_to_driver(&mut driver);
+        assert_eq!(driver.prql(), "from resources\nfilter (target) == (BULLET)\ngroup { target } (\naggregate { gpu_avg = average gpu, total_storage = sum storage, total_sus = (sum sus | as int) })");
+        assert_eq!(driver.sql(), "SELECT target, AVG(gpu) AS gpu_avg, COALESCE(SUM(storage), 0) AS total_storage, CAST(COALESCE(SUM(sus), 0) AS bigint) AS total_sus FROM resources WHERE target = \"BULLET\" GROUP BY target");
     }
 }
