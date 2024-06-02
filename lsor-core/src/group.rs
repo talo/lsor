@@ -50,7 +50,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{column::col, count, from::from, min, null, table::table};
+    use crate::{column::col, count, from::from, min, null, split_part, table::table};
 
     use super::*;
 
@@ -58,8 +58,9 @@ mod test {
     fn test_group() {
         let mut driver = crate::driver::Driver::new();
         from(table("jobs"))
+            .derive("name", split_part(col("path"), "#", 2))
             .filter(col("deleted_at").eq(null()))
-            .group([col("status"), col("account_id")])
+            .group([col("name"), col("status"), col("account_id")])
             .aggregate([
                 (None, &count() as &dyn PushPrql),
                 (
@@ -68,7 +69,7 @@ mod test {
                 ),
             ])
             .push_to_driver(&mut driver);
-        assert_eq!(driver.prql(), "from jobs\nfilter (deleted_at) == (null)\ngroup { status, account_id } (\naggregate { count [], created_at = min created_at })");
-        assert_eq!(driver.sql(), "SELECT status, account_id, COUNT(*), MIN(created_at) AS created_at FROM jobs WHERE deleted_at IS NULL GROUP BY status, account_id");
+        assert_eq!(driver.prql(), "from jobs\nderive { name = s\"split_part(path, '#', 2)\" }\nfilter (deleted_at) == (null)\ngroup { name, status, account_id } (\naggregate { count [], created_at = min created_at })");
+        assert_eq!(driver.sql(), "WITH table_0 AS (SELECT split_part(path, '#', 2) AS name, status, account_id, created_at, deleted_at FROM jobs) SELECT name, status, account_id, COUNT(*), MIN(created_at) AS created_at FROM table_0 WHERE deleted_at IS NULL GROUP BY name, status, account_id");
     }
 }

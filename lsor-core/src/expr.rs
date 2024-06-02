@@ -28,6 +28,14 @@ pub fn min<Expr>(expr: Expr) -> Min<Expr> {
     Min { expr }
 }
 
+pub fn split_part<Expr>(expr: Expr, delimiter: &'static str, part: u32) -> SplitPart<Expr> {
+    SplitPart {
+        expr,
+        delimiter,
+        part,
+    }
+}
+
 pub fn sub<LHS, RHS>(lhs: LHS, rhs: RHS) -> Sub<LHS, RHS> {
     Sub { lhs, rhs }
 }
@@ -182,6 +190,27 @@ where
     fn push_to_driver(&self, driver: &mut crate::driver::Driver) {
         driver.push("min ");
         self.expr.push_to_driver(driver);
+    }
+}
+
+pub struct SplitPart<Expr> {
+    pub expr: Expr,
+    pub delimiter: &'static str,
+    pub part: u32,
+}
+
+impl<Expr> PushPrql for SplitPart<Expr>
+where
+    Expr: PushPrql,
+{
+    fn push_to_driver(&self, driver: &mut crate::driver::Driver) {
+        driver.push("s\"split_part(");
+        self.expr.push_to_driver(driver);
+        driver.push(", '");
+        driver.push(self.delimiter);
+        driver.push("', ");
+        driver.push(self.part);
+        driver.push(")\"");
     }
 }
 
