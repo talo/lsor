@@ -9,6 +9,10 @@ use crate::{
     ColumnName, Derive, Group,
 };
 
+pub fn filter<Query, Filter>(query: Query, filter: Filter) -> Filtered<Query, Filter> {
+    Filtered { query, filter }
+}
+
 pub struct Filtered<Query, Filter> {
     pub query: Query,
     pub filter: Filter,

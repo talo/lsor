@@ -65,18 +65,16 @@ fn expand_derive_filter_for_struct(
         let json = util::has_json_attr(&field.attrs);
         if flat {
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                    filter.push_to_driver_with_table_name(tn, driver);
+                filter.push_to_driver_with_table_name(tn, driver);
+            }})
+        } else if json {
+            Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+                filter.push_to_driver_as_json(&::lsor::table::dot(tn, ::lsor::column::col(stringify!(#field_ident))), driver);
             }})
         } else {
-            if json {
-                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                    filter.push_to_driver_as_json(&::lsor::table::dot(tn, ::lsor::column::col(stringify!(#field_ident))), driver);
-                }})
-            } else {
-                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                    filter.push_to_driver(&::lsor::table::dot(tn, ::lsor::column::col(stringify!(#field_ident))), driver);
-                }})
-            }
+            Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+                filter.push_to_driver(&::lsor::table::dot(tn, ::lsor::column::col(stringify!(#field_ident))), driver);
+            }})
         }
     });
 
@@ -257,12 +255,11 @@ fn expand_derive_filter_for_struct(
 
 fn expand_derive_json_filter_for_struct(
     ast: &DeriveInput,
-    attrs: &[Attribute],
+    _attrs: &[Attribute],
     data: &DataStruct,
 ) -> TokenStream {
     let ident = &ast.ident;
     let filter_ident = util::concat_idents(ident, &Ident::new("Filter", Span::call_site()));
-    let table = util::collect_table_attr(attrs);
 
     let fields = match &data.fields {
         Fields::Named(fields) => fields,

@@ -38,13 +38,10 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
         let flat = util::has_flatten_attr(&field.attrs);
         if flat {
             quote! { #field_ident: <_>::from_row(row)?, }
+        } else if json {
+            quote! { #field_ident: row.try_get::<::sqlx::types::Json<_>, _>(stringify!(#field_ident))?.0, }
         } else {
-            if json {
-                quote! { #field_ident: row.try_get::<::sqlx::types::Json<_>, _>(stringify!(#field_ident))?.0, }
-                // quote! { #field_ident: row.try_get(stringify!(#field_ident))?, }
-            } else {
-                quote! { #field_ident: row.try_get(stringify!(#field_ident))?, }
-            }
+            quote! { #field_ident: row.try_get(stringify!(#field_ident))?, }
         }
     });
 

@@ -9,6 +9,10 @@ use crate::{
     ColumnName, Derive,
 };
 
+pub fn sort<Query, Sort>(query: Query, sort: Sort) -> Sorted<Query, Sort> {
+    Sorted { query, sort }
+}
+
 /// The implementation of `PushPrql` must only push the expression that is being
 /// ordered by. It must not push the order itself.
 pub trait Sorting: PushPrql {

@@ -94,7 +94,7 @@ mod test {
                 ),
             ])
             .push_to_driver(&mut driver);
-        assert_eq!(driver.prql(), "from resources\nfilter (target) == (BULLET)\ngroup { target } (\naggregate { gpu_avg = average gpu, total_storage = sum storage, total_sus = (sum sus | as int) })");
+        assert_eq!(driver.prql(), "from resources\nfilter (target) == (BULLET)\ngroup { target } (\naggregate { gpu_avg = average gpu, total_storage = sum storage, total_sus = (sum sus | as bigint) })");
         assert_eq!(driver.sql(), "SELECT target, AVG(gpu) AS gpu_avg, COALESCE(SUM(storage), 0) AS total_storage, CAST(COALESCE(SUM(sus), 0) AS bigint) AS total_sus FROM resources WHERE target = \"BULLET\" GROUP BY target");
     }
 }

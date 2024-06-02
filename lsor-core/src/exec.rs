@@ -56,11 +56,28 @@ where
     S: PushPrql + Sorting,
     for<'r> R: FromRow<'r, PgRow> + OutputType + Table,
 {
+    load_page_of_query(executor, from(R::table_name()), filter, sort, pagination).await
+}
+
+pub async fn load_page_of_query<'c, E, Q, F, S, R>(
+    executor: E,
+    query: Q,
+    filter: F,
+    sort: S,
+    pagination: Pagination,
+) -> sqlx::Result<Connection<String, R, TotalCount>>
+where
+    E: Copy + Executor<'c, Database = Postgres>,
+    Q: PushPrql,
+    F: PushPrql,
+    S: PushPrql + Sorting,
+    for<'r> R: FromRow<'r, PgRow> + OutputType + Table,
+{
     use sqlx::Row;
 
     let cursor = pagination.cursor;
-    let subquery = from(R::table_name()).filter(filter);
-    let subquery = subquery.sort(&sort);
+    let subquery = crate::filter(&query, filter);
+    let subquery = crate::sort(&subquery, &sort);
     let subquery_with_cursor = subquery.derive("cursor", &sort);
 
     let mut driver = Driver::new();
