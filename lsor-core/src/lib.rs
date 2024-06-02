@@ -10,6 +10,7 @@ pub mod expr;
 pub mod filter;
 pub mod from;
 pub mod group;
+pub mod join;
 pub mod json;
 pub mod page;
 pub mod row;
@@ -30,6 +31,7 @@ pub use expr::*;
 pub use filter::*;
 pub use from::*;
 pub use group::*;
+pub use join::*;
 pub use json::*;
 pub use page::*;
 pub use row::*;
@@ -37,3 +39,10 @@ pub use sort::*;
 pub use table::*;
 pub use take::*;
 pub use var::*;
+
+#[cfg(test)]
+mod test {
+
+    #[test]
+    fn test() {}
+}
