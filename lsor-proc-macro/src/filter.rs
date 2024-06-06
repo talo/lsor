@@ -407,7 +407,6 @@ fn expand_derive_filter_for_enum(
         .map(|attr| match attr.as_str() {
             "==" => quote! {
                 #filter_ident::Eq(x) => {
-                    println!("NON JSON x: {:?}", x);
                     lhs.push_to_driver(driver);
                     driver.push(" == ");
                     driver.push_bind(x);
@@ -460,7 +459,6 @@ fn expand_derive_filter_for_enum(
         .map(|attr| match attr.as_str() {
             "==" => quote! {
                 #filter_ident::Eq(x) => {
-                    println!("JSON x: {:?}", ::sqlx::types::Json(x));
                     lhs.push_to_driver(driver);
                     driver.push(" == ");
                     driver.push_bind(::sqlx::types::Json(x));
