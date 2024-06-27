@@ -372,8 +372,8 @@ impl UuidFilter {
 #[derive(Clone, Debug, OneofObject)]
 #[graphql(rename_fields = "snake_case")]
 pub enum DateTimeFilter {
-    Eq(DateTime<Utc>),
-    Ne(DateTime<Utc>),
+    Eq(Option<DateTime<Utc>>),
+    Ne(Option<DateTime<Utc>>),
     Gt(DateTime<Utc>),
     Ge(DateTime<Utc>),
     Lt(DateTime<Utc>),
@@ -386,12 +386,18 @@ impl DateTimeFilter {
             Self::Eq(x) => {
                 lhs.push_to_driver(driver);
                 driver.push(" == ");
-                driver.push_bind(x);
+                match x {
+                    Some(x) => driver.push_bind(x),
+                    None => driver.push("null"),
+                }
             }
             Self::Ne(x) => {
                 lhs.push_to_driver(driver);
                 driver.push(" != ");
-                driver.push_bind(x);
+                match x {
+                    Some(x) => driver.push_bind(x),
+                    None => driver.push("null"),
+                }
             }
             Self::Gt(x) => {
                 lhs.push_to_driver(driver);

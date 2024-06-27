@@ -109,10 +109,19 @@ fn test_struct_filter() {
 fn test_embedded_filter() {
     let mut driver = Driver::new();
     PushPrql::push_to_driver(
-        &AccountFilter::Metadata(MetadataFilter::CreatedAt(DateTimeFilter::Eq(Utc::now()))),
+        &AccountFilter::Metadata(MetadataFilter::CreatedAt(DateTimeFilter::Eq(Some(
+            Utc::now(),
+        )))),
         &mut driver,
     );
     assert_eq!(driver.prql(), "accounts.created_at == $1");
+
+    let mut driver = Driver::new();
+    PushPrql::push_to_driver(
+        &AccountFilter::Metadata(MetadataFilter::CreatedAt(DateTimeFilter::Eq(None))),
+        &mut driver,
+    );
+    assert_eq!(driver.prql(), "accounts.created_at == null");
 }
 
 #[test]
