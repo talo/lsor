@@ -307,7 +307,6 @@ impl StringFilter {
                 driver.push(" <= ");
                 driver.push_bind(sqlx::types::Json(x));
             }
-            _ => self.push_to_driver(lhs, driver),
         }
     }
 }
@@ -372,8 +371,9 @@ impl UuidFilter {
 #[derive(Clone, Debug, OneofObject)]
 #[graphql(rename_fields = "snake_case")]
 pub enum DateTimeFilter {
-    Eq(Option<DateTime<Utc>>),
-    Ne(Option<DateTime<Utc>>),
+    IsNull(bool),
+    Eq(DateTime<Utc>),
+    Ne(DateTime<Utc>),
     Gt(DateTime<Utc>),
     Ge(DateTime<Utc>),
     Lt(DateTime<Utc>),
@@ -383,21 +383,23 @@ pub enum DateTimeFilter {
 impl DateTimeFilter {
     pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
+            Self::IsNull(x) => {
+                lhs.push_to_driver(driver);
+                if *x {
+                    driver.push(" == null")
+                } else {
+                    driver.push(" != null")
+                }
+            }
             Self::Eq(x) => {
                 lhs.push_to_driver(driver);
                 driver.push(" == ");
-                match x {
-                    Some(x) => driver.push_bind(x),
-                    None => driver.push("null"),
-                }
+                driver.push_bind(x)
             }
             Self::Ne(x) => {
                 lhs.push_to_driver(driver);
                 driver.push(" != ");
-                match x {
-                    Some(x) => driver.push_bind(x),
-                    None => driver.push("null"),
-                }
+                driver.push_bind(x)
             }
             Self::Gt(x) => {
                 lhs.push_to_driver(driver);
@@ -424,6 +426,14 @@ impl DateTimeFilter {
 
     pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
+            Self::IsNull(x) => {
+                lhs.push_to_driver(driver);
+                if *x {
+                    driver.push(" == null")
+                } else {
+                    driver.push(" != null")
+                }
+            }
             Self::Eq(x) => {
                 lhs.push_to_driver(driver);
                 driver.push(" == ");
