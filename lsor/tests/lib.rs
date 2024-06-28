@@ -8,7 +8,6 @@ use lsor::{
     sort::{DateTimeSort, I32Sort, Sorting, StringSort, UuidSort},
     Filter, Row, Sort, Type,
 };
-use lsor_core::StringFilter;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -109,16 +108,14 @@ fn test_struct_filter() {
 fn test_embedded_filter() {
     let mut driver = Driver::new();
     PushPrql::push_to_driver(
-        &AccountFilter::Metadata(MetadataFilter::CreatedAt(DateTimeFilter::Eq(Some(
-            Utc::now(),
-        )))),
+        &AccountFilter::Metadata(MetadataFilter::CreatedAt(DateTimeFilter::Eq(Utc::now()))),
         &mut driver,
     );
     assert_eq!(driver.prql(), "accounts.created_at == $1");
 
     let mut driver = Driver::new();
     PushPrql::push_to_driver(
-        &AccountFilter::Metadata(MetadataFilter::CreatedAt(DateTimeFilter::Eq(None))),
+        &AccountFilter::Metadata(MetadataFilter::CreatedAt(DateTimeFilter::IsNull(true))),
         &mut driver,
     );
     assert_eq!(driver.prql(), "accounts.created_at == null");

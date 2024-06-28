@@ -67,16 +67,14 @@ fn expand_derive_filter_for_struct(
             Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
                     filter.push_to_driver_with_table_name(tn, driver);
             }})
+        } else if json {
+            Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+                filter.push_to_driver_as_json(&::lsor::table::dot(tn, ::lsor::column::col(stringify!(#field_ident))), driver);
+            }})
         } else {
-            if json {
-                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                    filter.push_to_driver_as_json(&::lsor::table::dot(tn, ::lsor::column::col(stringify!(#field_ident))), driver);
-                }})
-            } else {
-                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                    filter.push_to_driver(&::lsor::table::dot(tn, ::lsor::column::col(stringify!(#field_ident))), driver);
-                }})
-            }
+            Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+                filter.push_to_driver(&::lsor::table::dot(tn, ::lsor::column::col(stringify!(#field_ident))), driver);
+            }})
         }
     });
 
@@ -329,7 +327,7 @@ fn expand_derive_json_filter_for_struct(
         }
     });
 
-    let push_to_drive_impl = table.map(|table| {
+    let _push_to_drive_impl = table.map(|table| {
         quote! {
             impl ::lsor::driver::PushPrql for #filter_ident {
                 fn push_to_driver(&self, driver: &mut ::lsor::driver::Driver) {
