@@ -68,6 +68,8 @@ impl Iterable for DateTime<Utc> {
 pub enum Cursor {
     I32,
     I64,
+    F32,
+    F64,
     String,
     Uuid,
     DateTime,
@@ -81,6 +83,9 @@ impl Cursor {
             ),
             "BIGINT" | "BIT INTEGER" => I64Cursor::encode(
                 &<i64 as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,
+            ),
+            "DECIMAL" | "NUMERIC" => F64Cursor::encode(
+                &<f64 as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,
             ),
             "TEXT" | "VARCHAR" => StringCursor::encode(
                 &<String as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,
@@ -104,6 +109,8 @@ impl Cursor {
         match self {
             Self::I32 => Var::I32(I32Cursor::decode(encoded)),
             Self::I64 => Var::I64(I64Cursor::decode(encoded)),
+            Self::F32 => Var::F32(F32Cursor::decode(encoded)),
+            Self::F64 => Var::F64(F64Cursor::decode(encoded)),
             Self::String => Var::String(StringCursor::decode(encoded)),
             Self::Uuid => Var::Uuid(UuidCursor::decode(encoded)),
             Self::DateTime => Var::DateTime(DateTimeCursor::decode(encoded)),
@@ -115,6 +122,8 @@ impl Cursor {
             Var::Bool(_) => panic!("invalid cursor type: bool"),
             Var::I32(v) => I32Cursor::encode(v),
             Var::I64(v) => I64Cursor::encode(v),
+            Var::F32(v) => F32Cursor::encode(v),
+            Var::F64(v) => F64Cursor::encode(v),
             Var::String(v) => StringCursor::encode(v),
             Var::Uuid(v) => UuidCursor::encode(v),
             Var::DateTime(v) => DateTimeCursor::encode(v),
@@ -125,6 +134,8 @@ impl Cursor {
         match self {
             Self::I32 => Var::I32(I32Cursor::min()),
             Self::I64 => Var::I64(I64Cursor::min()),
+            Self::F32 => Var::F32(F32Cursor::min()),
+            Self::F64 => Var::F64(F64Cursor::min()),
             Self::String => Var::String(StringCursor::min()),
             Self::Uuid => Var::Uuid(UuidCursor::min()),
             Self::DateTime => Var::DateTime(DateTimeCursor::min()),
@@ -135,6 +146,8 @@ impl Cursor {
         match self {
             Self::I32 => Var::I32(I32Cursor::max()),
             Self::I64 => Var::I64(I64Cursor::max()),
+            Self::F32 => Var::F32(F32Cursor::max()),
+            Self::F64 => Var::F64(F64Cursor::max()),
             Self::String => Var::String(StringCursor::max()),
             Self::Uuid => Var::Uuid(UuidCursor::max()),
             Self::DateTime => Var::DateTime(DateTimeCursor::max()),
@@ -235,6 +248,72 @@ impl I64Cursor {
 
     pub fn max() -> i64 {
         i64::MAX
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub struct F32Cursor;
+
+impl F32Cursor {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn decode(encoded: &str) -> f32 {
+        base64::engine::general_purpose::STANDARD
+            .decode(encoded)
+            .ok()
+            .and_then(|buf| buf.as_slice().try_into().ok())
+            .map(f32::from_be_bytes)
+            .unwrap_or_else(|| {
+                tracing::warn!("invalid f32 cursor '{}'", encoded);
+                Self::min()
+            })
+    }
+
+    pub fn encode(decoded: &f32) -> String {
+        base64::engine::general_purpose::STANDARD.encode(decoded.to_be_bytes())
+    }
+
+    pub fn min() -> f32 {
+        f32::MIN
+    }
+
+    pub fn max() -> f32 {
+        f32::MAX
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub struct F64Cursor;
+
+impl F64Cursor {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn decode(encoded: &str) -> f64 {
+        base64::engine::general_purpose::STANDARD
+            .decode(encoded)
+            .ok()
+            .and_then(|buf| buf.as_slice().try_into().ok())
+            .map(f64::from_be_bytes)
+            .unwrap_or_else(|| {
+                tracing::warn!("invalid f64 cursor '{}'", encoded);
+                Self::min()
+            })
+    }
+
+    pub fn encode(decoded: &f64) -> String {
+        base64::engine::general_purpose::STANDARD.encode(decoded.to_be_bytes())
+    }
+
+    pub fn min() -> f64 {
+        f64::MIN
+    }
+
+    pub fn max() -> f64 {
+        f64::MAX
     }
 }
 
