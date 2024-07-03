@@ -15,11 +15,13 @@ pub fn lit(x: impl Into<Literal>) -> Literal {
     x.into()
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Var {
     Bool(bool),
     I32(i32),
     I64(i64),
+    F32(f32),
+    F64(f64),
     String(String),
     Uuid(Uuid),
     DateTime(DateTime<Utc>),
@@ -31,6 +33,8 @@ impl PushPrql for Var {
             Self::Bool(x) => driver.push_bind(x),
             Self::I32(x) => driver.push_bind(x),
             Self::I64(x) => driver.push_bind(x),
+            Self::F32(x) => driver.push_bind(x),
+            Self::F64(x) => driver.push_bind(x),
             Self::String(x) => driver.push_bind(x),
             Self::Uuid(x) => driver.push_bind(x),
             Self::DateTime(x) => driver.push_bind(x),

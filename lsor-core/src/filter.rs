@@ -72,6 +72,14 @@ impl Filterable for u64 {
     type Filter = I64Filter; // Yes, this is intentional, Postgres doesn't support u64
 }
 
+impl Filterable for f32 {
+    type Filter = F32Filter;
+}
+
+impl Filterable for f64 {
+    type Filter = F64Filter;
+}
+
 impl Filterable for String {
     type Filter = StringFilter;
 }
@@ -156,6 +164,110 @@ pub enum I64Filter {
 }
 
 impl I64Filter {
+    pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        match self {
+            Self::Eq(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" == ");
+                driver.push_bind(x);
+            }
+            Self::Ne(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" != ");
+                driver.push_bind(x);
+            }
+            Self::Gt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" > ");
+                driver.push_bind(x);
+            }
+            Self::Ge(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" >= ");
+                driver.push_bind(x);
+            }
+            Self::Lt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" < ");
+                driver.push_bind(x);
+            }
+            Self::Le(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" <= ");
+                driver.push_bind(x);
+            }
+        }
+    }
+
+    pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        self.push_to_driver(lhs, driver)
+    }
+}
+
+#[derive(Clone, Debug, OneofObject)]
+#[graphql(rename_fields = "snake_case")]
+pub enum F32Filter {
+    Eq(f32),
+    Ne(f32),
+    Gt(f32),
+    Ge(f32),
+    Lt(f32),
+    Le(f32),
+}
+
+impl F32Filter {
+    pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        match self {
+            Self::Eq(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" == ");
+                driver.push_bind(x);
+            }
+            Self::Ne(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" != ");
+                driver.push_bind(x);
+            }
+            Self::Gt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" > ");
+                driver.push_bind(x);
+            }
+            Self::Ge(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" >= ");
+                driver.push_bind(x);
+            }
+            Self::Lt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" < ");
+                driver.push_bind(x);
+            }
+            Self::Le(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" <= ");
+                driver.push_bind(x);
+            }
+        }
+    }
+
+    pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        self.push_to_driver(lhs, driver)
+    }
+}
+
+#[derive(Clone, Debug, OneofObject)]
+#[graphql(rename_fields = "snake_case")]
+pub enum F64Filter {
+    Eq(f64),
+    Ne(f64),
+    Gt(f64),
+    Ge(f64),
+    Lt(f64),
+    Le(f64),
+}
+
+impl F64Filter {
     pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
             Self::Eq(x) => {
