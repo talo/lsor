@@ -426,6 +426,7 @@ impl StringFilter {
 #[derive(Clone, Debug, OneofObject)]
 #[graphql(rename_fields = "snake_case")]
 pub enum UuidFilter {
+    IsNull(bool),
     Eq(Uuid),
     Ne(Uuid),
     In(Vec<Uuid>),
@@ -434,6 +435,14 @@ pub enum UuidFilter {
 impl UuidFilter {
     pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
+            Self::IsNull(x) => {
+                lhs.push_to_driver(driver);
+                if *x {
+                    driver.push(" == null")
+                } else {
+                    driver.push(" != null")
+                }
+            }
             Self::Eq(x) => {
                 lhs.push_to_driver(driver);
                 driver.push(" == ");
@@ -460,6 +469,14 @@ impl UuidFilter {
 
     pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
+            Self::IsNull(x) => {
+                lhs.push_to_driver(driver);
+                if *x {
+                    driver.push(" == null")
+                } else {
+                    driver.push(" != null")
+                }
+            }
             Self::Eq(x) => {
                 lhs.push_to_driver(driver);
                 driver.push(" == ");
