@@ -1,4 +1,5 @@
 pub mod aggregate;
+pub mod cache;
 pub mod column;
 pub mod cond;
 pub mod cursor;
@@ -17,6 +18,7 @@ pub mod take;
 pub mod var;
 
 pub use aggregate::*;
+pub use cache::*;
 pub use column::*;
 pub use cond::*;
 pub use cursor::*;
