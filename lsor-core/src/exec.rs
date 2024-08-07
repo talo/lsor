@@ -14,25 +14,22 @@ use crate::{
     Sorting,
 };
 
-pub async fn save_one<'c, E, R>(executor: E, row: R) -> sqlx::Result<()>
+pub async fn save_one<'c, E, R>(mut driver: Driver, executor: E, row: R) -> sqlx::Result<()>
 where
     E: Executor<'c, Database = Postgres>,
     R: Row + Table,
 {
-    let mut driver = Driver::new();
     upsert(row).push_to_driver(&mut driver);
     driver.execute_without_compilation(executor).await?;
     Ok(())
 }
 
-pub async fn load_one<'c, E, F, R>(executor: E, filter: F) -> sqlx::Result<Option<R>>
+pub async fn load_one<'c, E, F, R>(mut driver: Driver, executor: E, filter: F) -> sqlx::Result<Option<R>>
 where
     E: Executor<'c, Database = Postgres>,
     F: PushPrql,
     for<'r> R: FromRow<'r, PgRow> + Table,
 {
-    let mut driver = Driver::new();
-
     from(R::table_name())
         .filter(filter)
         .take(1)
@@ -45,6 +42,7 @@ where
 }
 
 pub async fn load_page<'c, E, F, S, R>(
+    mut driver: Driver,
     executor: E,
     filter: F,
     sort: S,
@@ -63,7 +61,6 @@ where
     let subquery = subquery.sort(&sort);
     let subquery_with_cursor = subquery.derive("cursor", &sort);
 
-    let mut driver = Driver::new();
     select_page_items(&subquery_with_cursor, pagination).push_to_driver(&mut driver);
 
     let rows = driver.fetch_all(executor).await?;

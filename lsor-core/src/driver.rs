@@ -9,7 +9,7 @@ use crate::Cache;
 pub struct Driver {
     prql: String,
     arguments: PgArguments,
-    cache: Option<Box<dyn Cache>>,
+    cache: Option<Box<dyn Cache + Send + Sync + 'static>>,
 }
 
 impl Driver {
@@ -21,11 +21,11 @@ impl Driver {
         }
     }
 
-    pub fn with_cache(cache: Box<dyn Cache>) -> Self {
+    pub fn with_cache(cache: Box<dyn Cache + Send + Sync +'static>) -> Self {
         Driver {
             prql: String::new(),
             arguments: PgArguments::default(),
-            cache: Some(cache.into()),
+            cache: Some(cache),
         }
     }
 
@@ -138,7 +138,7 @@ impl Driver {
         }
     }
 
-    fn fetch_from_cache(&self, key: &String) -> Option<String> {
+    fn fetch_from_cache(&self, key: &str) -> Option<String> {
         self.cache.as_ref().and_then(|cache| cache.get(key))
     }
 }
