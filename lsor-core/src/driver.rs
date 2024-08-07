@@ -1,4 +1,8 @@
-use std::fmt::Display;
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt::Display,
+    sync::RwLock,
+};
 
 use chrono::{DateTime, Utc};
 use sqlx::{postgres::PgArguments, Database, Encode, Executor, Postgres, Type};
@@ -7,6 +11,9 @@ use uuid::Uuid;
 pub struct Driver {
     prql: String,
     arguments: PgArguments,
+    cache: RwLock<HashMap<String, String>>,
+    cache_fifo: RwLock<VecDeque<String>>,
+    cache_limit_n: usize,
 }
 
 impl Driver {
@@ -14,6 +21,9 @@ impl Driver {
         Driver {
             prql: String::new(),
             arguments: PgArguments::default(),
+            cache: RwLock::new(HashMap::default()),
+            cache_fifo: RwLock::new(VecDeque::default()),
+            cache_limit_n: 1_000,
         }
     }
 
@@ -31,9 +41,16 @@ impl Driver {
             ..Default::default()
         };
 
+        let cached_sql = self.fetch_from_cache(&self.prql);
+        if let Some(cached_sql) = cached_sql {
+            tracing::debug!("returning cached sql:\n{}", &cached_sql);
+            return cached_sql.clone();
+        }
+
         match prqlc::compile(&self.prql, opts) {
             Ok(sql) => {
                 tracing::debug!("compiling prql:\n{}\ninto sql:\n{}", &self.prql, &sql);
+                self.add_to_cache(self.prql.clone(), sql.clone());
                 sql
             }
             Err(e) => {
@@ -111,6 +128,27 @@ impl Driver {
             .build()
             .fetch_optional(executor)
             .await
+    }
+
+    fn add_to_cache(&self, key: String, value: String) {
+        let mut cache = self.cache.write().unwrap();
+        let mut cache_fifo = self.cache_fifo.write().unwrap();
+
+        if cache_fifo.len() >= self.cache_limit_n {
+            if let Some(key) = cache_fifo.pop_front() {
+                cache.remove(&key);
+            }
+        }
+
+        cache.insert(key.clone(), value);
+
+        cache_fifo.retain(|k| k != &key);
+        cache_fifo.push_back(key);
+    }
+
+    fn fetch_from_cache(&self, key: &String) -> Option<String> {
+        let cache = self.cache.read().unwrap(); // TODO: We should probably shift the key to the back of the fifo and have something more like an LRU
+        cache.get(key).cloned()
     }
 }
 
@@ -241,5 +279,37 @@ impl PushPrql for SQL {
         driver.push("s\"");
         driver.push(self.sql);
         driver.push('\"');
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::time::Instant;
+
+    use crate::{col, from, gt, table};
+
+    use super::*;
+
+    #[test]
+    fn test_cache() {
+        let mut driver = Driver::new();
+        {
+            from(table("users"))
+                .filter(gt(col("age"), 18))
+                .push_to_driver(&mut driver);
+        }
+        let begin = Instant::now();
+        assert_eq!(driver.sql(), "SELECT * FROM users WHERE age > $1");
+        let end = Instant::now();
+        let duration = end.duration_since(begin);
+        println!("duration: {:?}", duration);
+
+        let begin = Instant::now();
+        assert_eq!(driver.sql(), "SELECT * FROM users WHERE age > $1");
+        let end = Instant::now();
+        let cached_duration = end.duration_since(begin);
+
+        assert!(cached_duration < duration);
+        println!("cached_duration: {:?}", cached_duration);
     }
 }
