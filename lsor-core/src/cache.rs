@@ -3,7 +3,6 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-// use tokio::sync::Mutex;
 
 pub trait Cache {
     fn get(&self, key: &str) -> Option<String>;
