@@ -1,26 +1,27 @@
 use std::{
     collections::{HashMap, VecDeque},
-    rc::Rc,
-    sync::RwLock,
+    sync::{Arc, RwLock},
 };
+
+// use tokio::sync::Mutex;
 
 pub trait Cache {
     fn get(&self, key: &str) -> Option<String>;
     fn insert(&self, key: String, value: String);
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct FifoCache {
-    cache: Rc<RwLock<HashMap<String, String>>>,
-    cache_fifo: Rc<RwLock<VecDeque<String>>>,
+    cache: Arc<RwLock<HashMap<String, String>>>,
+    cache_fifo: Arc<RwLock<VecDeque<String>>>,
     cache_limit_n: usize,
 }
 
 impl FifoCache {
     pub fn new(cache_limit_n: usize) -> Self {
         Self {
-            cache: Rc::new(RwLock::new(HashMap::new())),
-            cache_fifo: Rc::new(RwLock::new(VecDeque::new())),
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            cache_fifo: Arc::new(RwLock::new(VecDeque::new())),
             cache_limit_n,
         }
     }
@@ -28,7 +29,7 @@ impl FifoCache {
 
 impl Cache for FifoCache {
     fn get(&self, key: &str) -> Option<String> {
-        let cache = self.cache.read().unwrap();
+        let cache = self.cache.read().unwrap(); //.iread().unwrap();
         cache.get(key).cloned()
     }
 
