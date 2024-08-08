@@ -4,9 +4,12 @@ use chrono::{DateTime, Utc};
 use sqlx::{postgres::PgArguments, Database, Encode, Executor, Postgres, Type};
 use uuid::Uuid;
 
+use crate::Cache;
+
 pub struct Driver {
     prql: String,
     arguments: PgArguments,
+    cache: Option<Box<dyn Cache + Send + Sync + 'static>>,
 }
 
 impl Driver {
@@ -14,6 +17,15 @@ impl Driver {
         Driver {
             prql: String::new(),
             arguments: PgArguments::default(),
+            cache: None,
+        }
+    }
+
+    pub fn with_cache(cache: Box<dyn Cache + Send + Sync +'static>) -> Self {
+        Driver {
+            prql: String::new(),
+            arguments: PgArguments::default(),
+            cache: Some(cache),
         }
     }
 
@@ -31,9 +43,16 @@ impl Driver {
             ..Default::default()
         };
 
+        let cached_sql = self.fetch_from_cache(&self.prql);
+        if let Some(cached_sql) = cached_sql {
+            tracing::debug!("returning cached sql:\n{}", &cached_sql);
+            return cached_sql.clone();
+        }
+
         match prqlc::compile(&self.prql, opts) {
             Ok(sql) => {
                 tracing::debug!("compiling prql:\n{}\ninto sql:\n{}", &self.prql, &sql);
+                self.add_to_cache(self.prql.clone(), sql.clone());
                 sql
             }
             Err(e) => {
@@ -111,6 +130,16 @@ impl Driver {
             .build()
             .fetch_optional(executor)
             .await
+    }
+
+    fn add_to_cache(&self, key: String, value: String) {
+        if let Some(cache) = &self.cache {
+            cache.insert(key, value);
+        }
+    }
+
+    fn fetch_from_cache(&self, key: &str) -> Option<String> {
+        self.cache.as_ref().and_then(|cache| cache.get(key))
     }
 }
 
