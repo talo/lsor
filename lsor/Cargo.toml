@@ -1,13 +1,13 @@
 [package]
 name = "lsor"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "An opinionated kind-of-ORM-but-not-really that allows you to write SQL statements using Rust"
 license = "MIT"
 
 [dependencies]
-lsor-core = { path = "../lsor-core", version= "0.1.0"  }
-lsor-proc-macro = { path = "../lsor-proc-macro", version="0.1.0" }
+lsor-core = { path = "../lsor-core", version = "0.1.0" }
+lsor-proc-macro = { path = "../lsor-proc-macro", version = "0.1.0" }
 
 [dev-dependencies]
 async-graphql = { version = "7.0", features = ["chrono", "url", "uuid"] }

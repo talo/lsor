@@ -1264,7 +1264,7 @@ checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 
 [[package]]
 name = "lsor"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-graphql",
  "chrono",
@@ -1278,7 +1278,7 @@ dependencies = [
 
 [[package]]
 name = "lsor-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-graphql",
  "base64",
@@ -1294,7 +1294,7 @@ dependencies = [
 
 [[package]]
 name = "lsor-proc-macro"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "proc-macro2",
  "quote",
