@@ -167,16 +167,6 @@ impl Row for Account {
     }
 }
 
-impl Row for &Account {
-    fn column_names() -> impl Iterator<Item = (ColumnName, IsPk)> {
-        Account::column_names()
-    }
-
-    fn push_column_values(&self, driver: &mut Driver) {
-        (*self).push_column_values(driver);
-    }
-}
-
 impl<'r> FromRow<'r, PgRow> for Account {
     fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
         use sqlx::Row;

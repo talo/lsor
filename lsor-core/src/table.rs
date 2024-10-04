@@ -15,6 +15,15 @@ pub trait Table {
     fn table_name() -> TableName;
 }
 
+impl<T> Table for &T
+where
+    T: Table,
+{
+    fn table_name() -> TableName {
+        T::table_name()
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TableName {
     pub name: &'static str,

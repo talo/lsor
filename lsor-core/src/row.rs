@@ -11,6 +11,19 @@ pub trait Row {
     fn push_column_values(&self, driver: &mut Driver);
 }
 
+impl<T> Row for &T
+where
+    T: Row,
+{
+    fn column_names() -> impl Iterator<Item = (ColumnName, IsPk)> {
+        T::column_names()
+    }
+
+    fn push_column_values(&self, driver: &mut Driver) {
+        (*self).push_column_values(driver)
+    }
+}
+
 pub fn upsert<R>(row: R) -> Upsert<R>
 where
     R: Table,

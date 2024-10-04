@@ -93,16 +93,25 @@ fn expand_derive_filter_for_struct(
                 Span::call_site(),
             );
 
-            let flat = util::has_flatten_attr(&field.attrs);
-            if flat {
-                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                    filter.push_to_driver(lhs, driver); // TODO: THIS IS WRONG BUT I DO NOT KNOW WHY. I JUST KNOW THAT IT IS.
-                }})
-            } else {
-                Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
-                    filter.push_to_driver(lhs, driver);
-                }})
-            }
+            //
+            // TODO: THIS COMMENT IS HERE BECAUSE WE NEED TO FIGURE OUT WHY
+            // THE FLATTEN ATTRIBUTE WORKS HERE WHEN IT SHOULDN'T.
+            //
+            // let flat = util::has_flatten_attr(&field.attrs);
+            // if flat {
+            //     Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+            //         filter.push_to_driver(lhs, driver); // TODO: THIS IS WRONG BUT I DO NOT KNOW WHY. I JUST KNOW THAT IT IS.
+            //     }})
+            // } else {
+            //     Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+            //         filter.push_to_driver(lhs, driver);
+            //     }})
+            // }
+            //
+
+            Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+                filter.push_to_driver(lhs, driver);
+            }})
         })
         .collect::<Vec<_>>();
 
