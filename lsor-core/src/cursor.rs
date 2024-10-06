@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use base64::Engine;
 use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
@@ -128,6 +130,22 @@ impl Cursor {
             Var::Uuid(v) => UuidCursor::encode(v),
             Var::DateTime(v) => DateTimeCursor::encode(v),
         }
+    }
+
+    pub fn cmp(&self, a: &str, b: &str) -> Ordering {
+        if a == b {
+            return Ordering::Equal;
+        }
+        if a.is_empty() {
+            return Ordering::Less;
+        }
+        if b.is_empty() {
+            return Ordering::Greater;
+        }
+        if self.decode(a) > self.decode(b) {
+            return Ordering::Greater;
+        }
+        Ordering::Less
     }
 
     pub fn min(self) -> Var {

@@ -15,7 +15,7 @@ pub fn lit(x: impl Into<Literal>) -> Literal {
     x.into()
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Var {
     Bool(bool),
     I32(i32),
