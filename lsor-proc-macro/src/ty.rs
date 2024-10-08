@@ -20,17 +20,7 @@ pub fn expand_derive_type(input: TokenStream) -> TokenStream {
 
         impl #impl_generics ::sqlx::postgres::PgHasArrayType for #ident #ty_generics #where_clause {
             fn array_type_info() -> ::sqlx::postgres::PgTypeInfo {
-                <Self as ::sqlx::postgres::PgHasArrayType>::array_type_info()
-            }
-        }
-
-        impl #impl_generics ::sqlx::postgres::PgHasArrayType for #ident #ty_generics #where_clause {
-            fn array_type_info() -> ::sqlx::postgres::PgTypeInfo {
-                // Generate the array type name by prepending an underscore to the base type name.
-                let type_name = <Self as ::sqlx::Type<::sqlx::Postgres>>::type_info().name();
-                let array_type_name = format!("_{}", type_name);
-
-                ::sqlx::postgres::PgTypeInfo::with_name(&array_type_name)
+                <String as ::sqlx::postgres::PgHasArrayType>::array_type_info()
             }
         }
     })
