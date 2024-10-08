@@ -17,6 +17,30 @@ pub(crate) fn snake_case_to_camel_case(s: &str) -> String {
         .collect()
 }
 
+pub(crate) fn camel_case_to_snake_case(s: &str) -> String {
+    let mut snake_case = String::new();
+    let mut prev_char_is_uppercase = false;
+
+    for (i, c) in s.chars().enumerate() {
+        if c.is_uppercase() {
+            // If it's not the first character and the previous character is not uppercase,
+            // add an underscore before the current character.
+            if i > 0 && !prev_char_is_uppercase {
+                snake_case.push('_');
+            }
+            // Add the lowercase version of the character.
+            snake_case.push(c.to_ascii_lowercase());
+            prev_char_is_uppercase = true;
+        } else {
+            // Add the character as is.
+            snake_case.push(c);
+            prev_char_is_uppercase = false;
+        }
+    }
+
+    snake_case
+}
+
 pub(crate) fn collect_table_attr(attrs: &[Attribute]) -> Option<String> {
     for attr in attrs {
         if !attr.path.is_ident("lsor") {
