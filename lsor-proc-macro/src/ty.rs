@@ -24,7 +24,7 @@ pub fn expand_derive_type(input: TokenStream) -> TokenStream {
 
         impl #impl_generics ::sqlx::postgres::PgHasArrayType for #ident #ty_generics #where_clause {
             fn array_type_info() -> ::sqlx::postgres::PgTypeInfo {
-                ::sqlx::postgres::PgTypeInfo::with_name(stringify!(#array_type_name))
+                ::sqlx::postgres::PgTypeInfo::with_name(#array_type_name)
             }
         }
     })

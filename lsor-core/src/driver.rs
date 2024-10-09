@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use chrono::{DateTime, Utc};
-use sqlx::{postgres::PgArguments, Database, Encode, Executor, Postgres, Type};
+use sqlx::{postgres::{PgArguments, PgHasArrayType}, Database, Encode, Executor, Postgres, Type};
 use uuid::Uuid;
 
 use crate::Cache;
@@ -230,15 +230,10 @@ where
 
 impl<T> PushPrql for Vec<T>
 where
-    T: PushPrql,
+    for<'q> T: 'q + Encode<'q, Postgres> + Sync + Type<Postgres> + PgHasArrayType,
 {
     fn push_to_driver(&self, driver: &mut Driver) {
-        for (i, value) in self.iter().enumerate() {
-            if i > 0 {
-                driver.push(", ");
-            }
-            value.push_to_driver(driver);
-        }
+        driver.push_bind(self);
     }
 }
 
