@@ -57,7 +57,11 @@ impl Driver {
             }
             Err(e) => {
                 tracing::error!("bad prql:\n{}", &self.prql);
-                panic!("must compile prql: {}", e)
+                tracing::error!("prql error:\n{}", e);
+                // FIXME: this is a hack; but it's better than panicking
+                //        we should find a way to make /sure/ that all code paths result in valid prql
+                //        otherwise we should return a prql from this function
+                "".into()
             }
         }
     }
