@@ -607,10 +607,11 @@ impl TagFilter {
     pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
             Self::In(xs) => {
+                driver.push(" s\" ");
                 lhs.push_to_driver(driver);
-                driver.push(" s\"@> ");
+                driver.push(" @> ");
                 driver.push_bind(xs);
-                driver.push('"');
+                driver.push('\"');
             }
         }
     }
@@ -618,10 +619,11 @@ impl TagFilter {
     pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
             Self::In(xs) => {
+                driver.push(" s\" ");
                 lhs.push_to_driver(driver);
-                driver.push(" s\"@> ");
+                driver.push(" @> ");
                 driver.push_bind(sqlx::types::Json(xs));
-                driver.push('"');
+                driver.push('\"');
             }
         }
     }

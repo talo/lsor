@@ -79,6 +79,19 @@ where
         let start = self.cursor.decode(&self.start);
         let end = self.cursor.decode(&self.end);
 
+        // TODO: I believe something like this needs to be done to get asc ordering working
+        // let (start, end) = if order.is_asc() {
+        //     (
+        //         self.cursor.decode(&self.end),
+        //         self.cursor.decode(&self.start),
+        //     )
+        // } else {
+        //     (
+        //         self.cursor.decode(&self.start),
+        //         self.cursor.decode(&self.end),
+        //     )
+        // };
+
         derive_from(
             &self.query,
             vec![
@@ -191,6 +204,28 @@ mod test {
         assert_eq!(
             driver.sql(),
             "SELECT *, COUNT(*) OVER (ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS total_count, SUM(CASE WHEN created_at < $1 THEN 1 ELSE 0 END) OVER (ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) > 0 AS has_prev_page, SUM(CASE WHEN created_at > $2 THEN 1 ELSE 0 END) OVER (ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) > 0 AS has_next_page FROM page ORDER BY created_at"
+        );
+    }
+
+    #[test]
+    fn test_select_page_info_desc() {
+        let mut driver = Driver::new();
+        {
+            let query = from(table("page")).sort(col("created_at").desc());
+            let cursor = Cursor::String;
+            let start = "start".to_string();
+            let end = "end".to_string();
+            let select_page_info = SelectPageInfo {
+                query,
+                cursor,
+                start,
+                end,
+            };
+            select_page_info.push_to_driver(&mut driver);
+        }
+        assert_eq!(
+            driver.sql(),
+            "SELECT *, COUNT(*) OVER (ORDER BY created_at DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS total_count, SUM(CASE WHEN created_at > $1 THEN 1 ELSE 0 END) OVER (ORDER BY created_at DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) > 0 AS has_prev_page, SUM(CASE WHEN created_at < $2 THEN 1 ELSE 0 END) OVER (ORDER BY created_at DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) > 0 AS has_next_page FROM page ORDER BY created_at DESC"
         );
     }
 
