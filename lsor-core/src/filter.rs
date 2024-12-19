@@ -632,18 +632,18 @@ impl TagFilter {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Enum)]
 #[graphql(rename_items = "snake_case")]
 pub enum BoolFilter {
-    True,
-    False,
+    T,
+    F,
 }
 
 impl BoolFilter {
     pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
-            Self::True => {
+            Self::T => {
                 lhs.push_to_driver(driver);
                 driver.push(" == true");
             }
-            Self::False => {
+            Self::F => {
                 lhs.push_to_driver(driver);
                 driver.push(" == false");
             }
