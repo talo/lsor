@@ -10,11 +10,11 @@ proc-macro = true
 
 [dependencies]
 proc-macro2 = { version = "1.0" }
-sqlx-macros-core = { version = "0.7", features = [
+sqlx-macros-core = { version = "0.8", default-features=false, features = [
     "chrono",
     "json",
     "postgres",
     "uuid",
 ] }
-syn = { version = "1.0.84", features = ["full"] }
+syn = { version = "2.0", features = ["full"] }
 quote = { version = "1.0" }

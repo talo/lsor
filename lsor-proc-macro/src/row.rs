@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-    parse_quote, Data, DeriveInput, Fields, GenericParam, Lifetime, LifetimeDef, WherePredicate,
+    parse_quote, Data, DeriveInput, Fields, GenericParam, Lifetime, LifetimeParam, WherePredicate,
 };
 
 use crate::util;
@@ -132,7 +132,7 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
     let lifetime = Lifetime::new("'__sqlx__FromRow", Span::call_site());
     generics
         .params
-        .insert(0, GenericParam::Lifetime(LifetimeDef::new(lifetime)));
+        .insert(0, GenericParam::Lifetime(LifetimeParam::new(lifetime)));
 
     // re-capture the impl_generics
     let (impl_generics, _ty_generics, _where_clause) = generics.split_for_impl();
@@ -190,7 +190,7 @@ pub fn expand_derive_json_row(mut ast: DeriveInput) -> TokenStream {
     let lifetime = Lifetime::new("'__sqlx__EncodeDecode", Span::call_site());
     generics
         .params
-        .insert(0, GenericParam::Lifetime(LifetimeDef::new(lifetime)));
+        .insert(0, GenericParam::Lifetime(LifetimeParam::new(lifetime)));
 
     // re-capture the impl_generics
     let (impl_generics_with_sqlx_lifetime, _ty_generics, _where_clause) = generics.split_for_impl();

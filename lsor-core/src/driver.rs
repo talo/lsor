@@ -1,7 +1,10 @@
 use std::fmt::Display;
 
 use chrono::{DateTime, Utc};
-use sqlx::{postgres::{PgArguments, PgHasArrayType}, Database, Encode, Executor, Postgres, Type};
+use sqlx::{
+    postgres::{PgArguments, PgHasArrayType},
+    Database, Encode, Executor, Postgres, Type,
+};
 use uuid::Uuid;
 
 use crate::Cache;
@@ -21,7 +24,7 @@ impl Driver {
         }
     }
 
-    pub fn with_cache(cache: Box<dyn Cache + Send + Sync +'static>) -> Self {
+    pub fn with_cache(cache: Box<dyn Cache + Send + Sync + 'static>) -> Self {
         Driver {
             prql: String::new(),
             arguments: PgArguments::default(),
@@ -82,7 +85,7 @@ impl Driver {
     {
         use sqlx::Arguments as _;
 
-        self.arguments.add(value);
+        self.arguments.add(value).unwrap();
         self.arguments
             .format_placeholder(&mut self.prql)
             .expect("must format placeholder");

@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use base64::Engine;
 use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{database::HasValueRef, Decode, Postgres, TypeInfo, ValueRef as _};
+use sqlx::{Decode, Postgres, TypeInfo, ValueRef};
 use uuid::Uuid;
 
 use crate::var::Var;
@@ -78,7 +78,7 @@ pub enum Cursor {
 }
 
 impl Cursor {
-    pub fn infer(column: <Postgres as HasValueRef<'_>>::ValueRef) -> sqlx::Result<String> {
+    pub fn infer(column: <sqlx::Postgres as sqlx::Database>::ValueRef<'_>) -> sqlx::Result<String> {
         Ok(match column.type_info().as_ref().name() {
             "INT" | "INTEGER" => I32Cursor::encode(
                 &<i32 as Decode<'_, Postgres>>::decode(column).map_err(sqlx::Error::Decode)?,

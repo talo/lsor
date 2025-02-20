@@ -43,7 +43,7 @@ pub(crate) fn camel_case_to_snake_case(s: &str) -> String {
 
 pub(crate) fn collect_table_attr(attrs: &[Attribute]) -> Option<String> {
     for attr in attrs {
-        if !attr.path.is_ident("lsor") {
+        if !attr.path().is_ident("lsor") {
             // ignore non-lsor attributes
             continue;
         }
@@ -83,7 +83,7 @@ pub(crate) fn collect_table_attr(attrs: &[Attribute]) -> Option<String> {
 
 pub(crate) fn collect_filter_attrs(attrs: &[Attribute]) -> Vec<String> {
     for attr in attrs {
-        if !attr.path.is_ident("lsor") {
+        if !attr.path().is_ident("lsor") {
             // ignore non-lsor attributes
             continue;
         }
@@ -140,12 +140,13 @@ pub(crate) fn has_json_attr(attrs: &[Attribute]) -> bool {
 
 fn has_any_attr(options: &[&str], attrs: &[Attribute]) -> bool {
     for attr in attrs {
-        if !attr.path.is_ident("lsor") {
+        if !attr.path().is_ident("lsor") {
             // ignore non-lsor attributes
             continue;
         }
         // find any skip or skip_sort attributes
         if attr
+            .parse_args_with()
             .tokens
             .clone()
             .into_iter()
