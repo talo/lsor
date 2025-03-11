@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenTree};
 use quote::quote;
 use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Ident};
 
@@ -141,7 +141,7 @@ fn expand_derive_filter_for_struct(
         })
         .collect::<Vec<_>>();
 
-    let push_to_drive_impl = table.map(|table| {
+    let push_to_drive_impl = table.as_ref().map(|table| {
         quote! {
             impl ::lsor::driver::PushPrql for #filter_ident {
                 fn push_to_driver(&self, driver: &mut ::lsor::driver::Driver) {
@@ -150,6 +150,47 @@ fn expand_derive_filter_for_struct(
             }
         }
     });
+
+    // Determine if we need to add PushPrql implementation for non-table filter types
+    let additional_push_prql = if push_to_drive_impl.is_none() {
+        quote! {
+            impl ::lsor::driver::PushPrql for #filter_ident {
+                fn push_to_driver(&self, driver: &mut ::lsor::driver::Driver) {
+                    // Default implementation for non-table-based filters
+                    let dummy_lhs = &::lsor::column::col("");
+                    match self {
+                        #filter_ident::All(all) => {
+                            let n = all.len();
+                            for (i, x) in all.iter().enumerate() {
+                                driver.push('(');
+                                x.push_to_driver(driver);
+                                if i < n - 1 {
+                                    driver.push(") && ");
+                                } else {
+                                    driver.push(')');
+                                }
+                            }
+                        },
+                        #filter_ident::Any(any) => {
+                            let n = any.len();
+                            for (i, x) in any.iter().enumerate() {
+                                driver.push('(');
+                                x.push_to_driver(driver);
+                                if i < n - 1 {
+                                    driver.push(") || ");
+                                } else {
+                                    driver.push(')');
+                                }
+                            }
+                        },
+                        _ => self.push_to_driver(dummy_lhs, driver),
+                    }
+                }
+            }
+        }
+    } else {
+        quote! {}
+    };
 
     let expanded = quote! {
         impl ::lsor::filter::Filterable for #ident {
@@ -165,6 +206,7 @@ fn expand_derive_filter_for_struct(
         }
 
         #push_to_drive_impl
+        #additional_push_prql
 
         impl #filter_ident {
             pub fn push_to_driver_with_table_name(&self, tn: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
@@ -336,11 +378,11 @@ fn expand_derive_json_filter_for_struct(
         }
     });
 
-    let _push_to_drive_impl = table.map(|table| {
+    let push_to_drive_impl = table.as_ref().map(|table_name| {
         quote! {
             impl ::lsor::driver::PushPrql for #filter_ident {
                 fn push_to_driver(&self, driver: &mut ::lsor::driver::Driver) {
-                    self.push_to_driver_with_table_name(&::lsor::table::table(#table), driver);
+                    self.push_to_driver_with_table_name(&::lsor::table::table(#table_name), driver);
                 }
             }
         }
@@ -359,7 +401,7 @@ fn expand_derive_json_filter_for_struct(
             #(#field_variants_decl)*
         }
 
-        // #push_to_drive_impl
+        #push_to_drive_impl
 
         impl #filter_ident {
             pub fn push_to_driver(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
@@ -513,6 +555,17 @@ fn expand_derive_filter_for_enum(
         })
         .collect::<Vec<_>>();
 
+    // Enum filter needs a direct PushPrql implementation
+    let enum_push_prql_impl = quote! {
+        impl ::lsor::driver::PushPrql for #filter_ident {
+            fn push_to_driver(&self, driver: &mut ::lsor::driver::Driver) {
+                // For enum filters, use a dummy column to satisfy the method signature
+                let column = &::lsor::column::col("");
+                self.push_to_driver(column, driver);
+            }
+        }
+    };
+
     let expanded = quote! {
         impl ::lsor::filter::Filterable for #ident {
             type Filter = #filter_ident;
@@ -523,6 +576,8 @@ fn expand_derive_filter_for_enum(
         pub enum #filter_ident {
             #(#variants,)*
         }
+
+        #enum_push_prql_impl
 
         impl #filter_ident {
             pub fn push_to_driver(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {

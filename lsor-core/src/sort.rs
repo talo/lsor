@@ -303,6 +303,7 @@ impl_sortable!(f64, F64Sort, Cursor::F64);
 impl_sortable!(String, StringSort, Cursor::String);
 impl_sortable!(Uuid, UuidSort, Cursor::Uuid);
 impl_sortable!(DateTime<Utc>, DateTimeSort, Cursor::DateTime);
+impl_sortable!(Vec<String>, StringsSort, Cursor::String);
 
 #[cfg(test)]
 mod test {

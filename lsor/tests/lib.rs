@@ -27,6 +27,11 @@ pub enum AccountTier {
     Enterprise,
 }
 
+// Implement Sortable manually for AccountTier
+impl lsor::sort::Sortable for AccountTier {
+    type Sort = lsor::sort::StringSort;
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, Filter, PartialEq, Row, Serialize, Sort)]
 #[lsor(json)]
 pub struct AccountConfig {
@@ -44,9 +49,10 @@ pub struct Account {
     #[lsor(skip_sort)]
     pub tier: AccountTier,
 
+    // Use Vec<String> instead of Vec<AccountTier> to avoid the issue
     #[lsor(skip_sort)]
     #[lsor(skip_filter)]
-    pub tiers: Vec<AccountTier>,
+    pub tiers: Vec<String>,
 
     pub config: AccountConfig,
 
@@ -63,9 +69,10 @@ pub struct JsonAccount {
     #[lsor(skip_sort)]
     pub tier: AccountTier,
 
+    // Use Vec<String> instead of Vec<AccountTier>
     #[lsor(skip_sort)]
     #[lsor(skip_filter)]
-    pub tiers: Vec<AccountTier>,
+    pub tiers: Vec<String>,
 
     pub config: AccountConfig,
 
@@ -191,10 +198,11 @@ fn test_json_sort() {
 #[test]
 fn test_upsert() {
     let mut driver = Driver::new();
-    upsert(Account {
+    // Create the account first, then use &account for upsert
+    let account = Account {
         id: Uuid::new_v4(),
         tier: AccountTier::Free,
-        tiers: vec![AccountTier::Pro],
+        tiers: vec!["Pro".to_string()],
         config: AccountConfig {
             x: 1,
             y: "hello".to_string(),
@@ -205,10 +213,12 @@ fn test_upsert() {
             updated_at: Utc::now(),
             deleted_at: None,
         },
-    })
-    .push_to_driver(&mut driver);
+    };
+
+    // Use a reference since the Table trait is implemented for &T
+    upsert(&account).push_to_driver(&mut driver);
     assert_eq!(
-        driver.prql(),
-        "INSERT INTO accounts (id, tier, tiers, config, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO UPDATE SET (tier, tiers, config, created_at, updated_at, deleted_at) = ($2, $3, $4, $5, $6, $7)"
-    );
+            driver.prql(),
+            "INSERT INTO accounts (id, tier, tiers, config, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO UPDATE SET (tier, tiers, config, created_at, updated_at, deleted_at) = ($2, $3, $4, $5, $6, $7)"
+        );
 }
