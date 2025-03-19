@@ -96,6 +96,10 @@ impl Filterable for Vec<String> {
     type Filter = TagFilter;
 }
 
+impl Filterable for Vec<u32> {
+    type Filter = IndexFilter;
+}
+
 impl Filterable for bool {
     type Filter = BoolFilter;
 }
@@ -355,10 +359,11 @@ impl StringFilter {
                 driver.push_bind(x);
             }
             Self::Like(x) => {
-                driver.push(" text.contains ");
+                driver.push(" text.contains (text.lower ");
                 driver.push_bind(x);
-                driver.push(" ");
+                driver.push(") (text.lower ");
                 lhs.push_to_driver(driver);
+                driver.push(") ");
             }
             Self::In(xs) => {
                 lhs.push_to_driver(driver);
@@ -591,6 +596,38 @@ impl DateTimeFilter {
                 lhs.push_to_driver(driver);
                 driver.push(" <= ");
                 driver.push_bind(sqlx::types::Json(x));
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, OneofObject)]
+#[graphql(rename_fields = "snake_case")]
+pub enum IndexFilter {
+    In(Vec<u32>),
+}
+
+impl IndexFilter {
+    pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        match self {
+            Self::In(xs) => {
+                driver.push(" s\" ");
+                lhs.push_to_driver(driver);
+                driver.push(" @> ");
+                driver.push_bind(xs.iter().map(|x| *x as i32).collect::<Vec<_>>());
+                driver.push('\"');
+            }
+        }
+    }
+
+    pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        match self {
+            Self::In(xs) => {
+                driver.push(" s\" ");
+                lhs.push_to_driver(driver);
+                driver.push(" @> ");
+                driver.push_bind(sqlx::types::Json(xs));
+                driver.push('\"');
             }
         }
     }
