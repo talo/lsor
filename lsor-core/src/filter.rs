@@ -355,10 +355,11 @@ impl StringFilter {
                 driver.push_bind(x);
             }
             Self::Like(x) => {
-                driver.push(" text.contains ");
+                driver.push(" text.contains (text.lower ");
                 driver.push_bind(x);
-                driver.push(" ");
+                driver.push(") (text.lower ");
                 lhs.push_to_driver(driver);
+                driver.push(") ");
             }
             Self::In(xs) => {
                 lhs.push_to_driver(driver);
