@@ -605,6 +605,7 @@ impl DateTimeFilter {
 #[graphql(rename_fields = "snake_case")]
 pub enum IndexFilter {
     In(Vec<u32>),
+    Eq(Vec<u32>),
 }
 
 impl IndexFilter {
@@ -617,6 +618,11 @@ impl IndexFilter {
                 driver.push_bind(xs.iter().map(|x| *x as i32).collect::<Vec<_>>());
                 driver.push('\"');
             }
+            Self::Eq(xs) => {
+                lhs.push_to_driver(driver);
+                driver.push(" == ");
+                driver.push_bind(xs.iter().map(|x| *x as i32).collect::<Vec<_>>());
+            }
         }
     }
 
@@ -628,6 +634,11 @@ impl IndexFilter {
                 driver.push(" @> ");
                 driver.push_bind(sqlx::types::Json(xs));
                 driver.push('\"');
+            }
+            Self::Eq(xs) => {
+                lhs.push_to_driver(driver);
+                driver.push(" == ");
+                driver.push_bind(xs.iter().map(|x| *x as i32).collect::<Vec<_>>());
             }
         }
     }
