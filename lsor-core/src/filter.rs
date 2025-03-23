@@ -638,7 +638,7 @@ impl IndexFilter {
             Self::Eq(xs) => {
                 lhs.push_to_driver(driver);
                 driver.push(" == ");
-                driver.push_bind(xs.iter().map(|x| *x as i32).collect::<Vec<_>>());
+                driver.push_bind(sqlx::types::Json(xs));
             }
         }
     }
