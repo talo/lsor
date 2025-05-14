@@ -648,6 +648,7 @@ impl IndexFilter {
 #[graphql(rename_fields = "snake_case")]
 pub enum TagFilter {
     In(Vec<String>),
+    Contains(String),
 }
 
 impl TagFilter {
@@ -660,6 +661,14 @@ impl TagFilter {
                 driver.push_bind(xs);
                 driver.push('\"');
             }
+            Self::Contains(pattern) => {
+                // For a single pattern that should match any array element
+                driver.push(" s\" EXISTS (SELECT 1 FROM unnest(");
+                lhs.push_to_driver(driver);
+                driver.push(") AS elem WHERE elem ILIKE ");
+                driver.push_bind(&format!("%{}%", pattern));
+                driver.push(") \"");
+            }
         }
     }
 
@@ -671,6 +680,14 @@ impl TagFilter {
                 driver.push(" @> ");
                 driver.push_bind(sqlx::types::Json(xs));
                 driver.push('\"');
+            }
+            Self::Contains(pattern) => {
+                // For a single pattern that should match any array element
+                driver.push(" s\" EXISTS (SELECT 1 FROM unnest(");
+                lhs.push_to_driver(driver);
+                driver.push(") AS elem WHERE elem ILIKE ");
+                driver.push_bind(&format!("%{}%", pattern));
+                driver.push(") \"");
             }
         }
     }
