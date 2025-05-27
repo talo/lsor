@@ -84,6 +84,10 @@ impl Filterable for String {
     type Filter = StringFilter;
 }
 
+impl Filterable for Vec<u8> {
+    type Filter = BytesFilter;
+}
+
 impl Filterable for Uuid {
     type Filter = UuidFilter;
 }
@@ -421,6 +425,62 @@ impl StringFilter {
             Self::Le(x) => {
                 lhs.push_to_driver(driver);
                 driver.push(" <= ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, OneofObject)]
+#[graphql(rename_fields = "snake_case")]
+pub enum BytesFilter {
+    IsNull(bool),
+    Eq(Vec<u8>),
+    Ne(Vec<u8>),
+}
+
+impl BytesFilter {
+    pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        match self {
+            Self::IsNull(x) => {
+                lhs.push_to_driver(driver);
+                if *x {
+                    driver.push(" == null")
+                } else {
+                    driver.push(" != null")
+                }
+            }
+            Self::Eq(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" == ");
+                driver.push_bind(x);
+            }
+            Self::Ne(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" != ");
+                driver.push_bind(x);
+            }
+        }
+    }
+
+    pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
+        match self {
+            Self::IsNull(x) => {
+                lhs.push_to_driver(driver);
+                if *x {
+                    driver.push(" == null")
+                } else {
+                    driver.push(" != null")
+                }
+            }
+            Self::Eq(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" == ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Ne(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" != ");
                 driver.push_bind(sqlx::types::Json(x));
             }
         }
