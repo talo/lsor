@@ -319,6 +319,7 @@ impl F64Filter {
 #[derive(Clone, Debug, OneofObject)]
 #[graphql(rename_fields = "snake_case")]
 pub enum StringFilter {
+    IsNull(bool),
     Eq(String),
     Ne(String),
     Gt(String),
@@ -332,6 +333,14 @@ pub enum StringFilter {
 impl StringFilter {
     pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
+            Self::IsNull(x) => {
+                lhs.push_to_driver(driver);
+                if *x {
+                    driver.push(" == null")
+                } else {
+                    driver.push(" != null")
+                }
+            }
             Self::Eq(x) => {
                 lhs.push_to_driver(driver);
                 driver.push(" == ");
@@ -385,6 +394,14 @@ impl StringFilter {
 
     pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
+            Self::IsNull(x) => {
+                lhs.push_to_driver(driver);
+                if *x {
+                    driver.push(" == null")
+                } else {
+                    driver.push(" != null")
+                }
+            }
             Self::Like(x) => {
                 lhs.push_to_driver(driver);
                 driver.push("s\"::text LIKE ");
@@ -664,6 +681,12 @@ impl DateTimeFilter {
 #[derive(Clone, Debug, OneofObject)]
 #[graphql(rename_fields = "snake_case")]
 pub enum IndexFilter {
+    Gt(Vec<u32>),
+    Lt(Vec<u32>),
+    Ge(Vec<u32>),
+    Le(Vec<u32>),
+    Ne(Vec<u32>),
+    IsNull(bool),
     In(Vec<u32>),
     Eq(Vec<u32>),
 }
@@ -671,6 +694,39 @@ pub enum IndexFilter {
 impl IndexFilter {
     pub fn push_to_driver(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
+            Self::IsNull(x) => {
+                lhs.push_to_driver(driver);
+                if *x {
+                    driver.push(" == null")
+                } else {
+                    driver.push(" != null")
+                }
+            }
+            Self::Ne(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" != ");
+                driver.push_bind(x.iter().map(|x| *x as i32).collect::<Vec<_>>())
+            }
+            Self::Gt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" > ");
+                driver.push_bind(x.iter().map(|x| *x as i32).collect::<Vec<_>>());
+            }
+            Self::Ge(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" >= ");
+                driver.push_bind(x.iter().map(|x| *x as i32).collect::<Vec<_>>());
+            }
+            Self::Lt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" < ");
+                driver.push_bind(x.iter().map(|x| *x as i32).collect::<Vec<_>>());
+            }
+            Self::Le(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" <= ");
+                driver.push_bind(x.iter().map(|x| *x as i32).collect::<Vec<_>>());
+            }
             Self::In(xs) => {
                 driver.push(" s\" ");
                 lhs.push_to_driver(driver);
@@ -688,17 +744,50 @@ impl IndexFilter {
 
     pub fn push_to_driver_as_json(&self, lhs: &dyn PushPrql, driver: &mut Driver) {
         match self {
+            Self::IsNull(x) => {
+                lhs.push_to_driver(driver);
+                if *x {
+                    driver.push(" == null")
+                } else {
+                    driver.push(" != null")
+                }
+            }
+            Self::Eq(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" == ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Ne(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" != ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Gt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" > ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Ge(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" >= ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Lt(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" < ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
+            Self::Le(x) => {
+                lhs.push_to_driver(driver);
+                driver.push(" <= ");
+                driver.push_bind(sqlx::types::Json(x));
+            }
             Self::In(xs) => {
                 driver.push(" s\" ");
                 lhs.push_to_driver(driver);
                 driver.push(" @> ");
                 driver.push_bind(sqlx::types::Json(xs));
                 driver.push('\"');
-            }
-            Self::Eq(xs) => {
-                lhs.push_to_driver(driver);
-                driver.push(" == ");
-                driver.push_bind(sqlx::types::Json(xs));
             }
         }
     }
