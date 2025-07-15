@@ -44,35 +44,27 @@ pub(crate) fn camel_case_to_snake_case(s: &str) -> String {
 pub(crate) fn collect_table_attr(attrs: &[Attribute]) -> Option<String> {
     for attr in attrs {
         if !attr.path().is_ident("lsor") {
-            println!("asd");
             // ignore non-lsor attributes
             continue;
         }
 
         if let Ok(nested) = attr.meta.require_list() {
             let tokens = nested.tokens.clone();
-            let mut token_iter = tokens
-                .into_iter()
-                .filter_map(|token_tree| match token_tree {
-                    TokenTree::Group(group) => Some(group.stream().into_iter()),
-                    _ => None,
-                })
-                .flatten();
+            let mut token_iter = tokens.into_iter();
 
             while let Some(t) = token_iter.next() {
-                if t.to_string() != "table" {
-                    // ignore non-table attributes
-                    continue;
-                }
-                if let Some(t) = token_iter.next() {
-                    if t.to_string() != "=" {
-                        // ignore non-assignment attributes
-                        continue;
-                    }
+                if t.to_string() == "table" {
                     if let Some(t) = token_iter.next() {
-                        // collect the table name
-                        if t.to_string().starts_with('\"') && t.to_string().ends_with('\"') {
-                            return Some(t.to_string()[1..t.to_string().len() - 1].to_owned());
+                        if t.to_string() == "=" {
+                            if let Some(t) = token_iter.next() {
+                                // collect the table name
+                                if t.to_string().starts_with('\"') && t.to_string().ends_with('\"')
+                                {
+                                    let table_name =
+                                        t.to_string()[1..t.to_string().len() - 1].to_owned();
+                                    return Some(table_name);
+                                }
+                            }
                         }
                     }
                 }
@@ -95,21 +87,18 @@ pub(crate) fn collect_filter_attrs(attrs: &[Attribute]) -> Vec<String> {
 
             let tokens = nested.tokens.clone().into_iter();
             for token in tokens {
-                match token {
-                    TokenTree::Literal(lit) => {
-                        let s = lit.to_string();
-                        // Remove quotes from string literals
-                        if s.starts_with('"') && s.ends_with('"') {
-                            let operator = s[1..s.len() - 1].to_string();
-                            match operator.as_str() {
-                                "==" | "!=" | "<" | "<=" | ">" | ">=" => {
-                                    operators.push(operator);
-                                }
-                                _ => {}
+                if let TokenTree::Literal(lit) = token {
+                    let s = lit.to_string();
+                    // Remove quotes from string literals
+                    if s.starts_with('"') && s.ends_with('"') {
+                        let operator = s[1..s.len() - 1].to_string();
+                        match operator.as_str() {
+                            "==" | "!=" | "<" | "<=" | ">" | ">=" => {
+                                operators.push(operator);
                             }
+                            _ => {}
                         }
                     }
-                    _ => {}
                 }
             }
 
@@ -152,23 +141,15 @@ fn has_any_attr(options: &[&str], attrs: &[Attribute]) -> bool {
             continue;
         }
 
-        // find any skip or skip_sort attributes
+        // find any matching attributes
         if let Ok(nested) = attr.meta.require_list() {
-            if nested
-                .tokens
-                .clone()
-                .into_iter()
-                .filter_map(|token_tree| match token_tree {
-                    TokenTree::Group(group) => Some(group.stream().into_iter()),
-                    _ => None,
-                })
-                .flatten()
-                .any(|t| {
-                    let s = t.to_string();
-                    options.iter().any(|o| &s == o)
-                })
-            {
-                return true;
+            // Parse the tokens as a simple comma-separated list
+            let tokens_str = nested.tokens.to_string();
+            let cleaned = tokens_str.replace(" ", "").replace(",", " ");
+            for token in cleaned.split_whitespace() {
+                if options.iter().any(|o| token == *o) {
+                    return true;
+                }
             }
         }
     }

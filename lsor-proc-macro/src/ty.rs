@@ -11,7 +11,7 @@ pub fn expand_derive_type(input: TokenStream) -> TokenStream {
     let expanded_derive_type =
         sqlx_macros_core::derives::expand_derive_type_encode_decode(&ast).unwrap();
 
-    let array_type_name = format!("_{}", util::camel_case_to_snake_case(&ident.to_string()));
+    let _array_type_name = format!("_{}", util::camel_case_to_snake_case(&ident.to_string()));
 
     TokenStream::from(quote! {
         #expanded_derive_type

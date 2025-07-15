@@ -127,22 +127,33 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
         }
     };
 
+    let impl_push_prql = quote! {
+        impl #impl_generics ::lsor::driver::PushPrql for #ident #ty_generics #where_clause {
+            fn push_to_driver(&self, driver: &mut ::lsor::driver::Driver) {
+                self.push_column_values(driver);
+            }
+        }
+    };
+
     // introduce the new lifteime that is needed for the FromRow trait
-    let mut generics = ast.generics.clone();
+    let mut generics_with_lifetime = ast.generics.clone();
     let lifetime = Lifetime::new("'__sqlx__FromRow", Span::call_site());
-    generics
+    generics_with_lifetime
         .params
         .insert(0, GenericParam::Lifetime(LifetimeParam::new(lifetime)));
 
-    // re-capture the impl_generics
-    let (impl_generics, _ty_generics, _where_clause) = generics.split_for_impl();
+    // re-capture the impl_generics with lifetime
+    let (impl_generics_with_lifetime, _ty_generics, _where_clause) =
+        generics_with_lifetime.split_for_impl();
 
     let expanded = quote! {
         #impl_table_trait
 
         #impl_row_trait
 
-        impl #impl_generics ::sqlx::FromRow<'__sqlx__FromRow, ::sqlx::postgres::PgRow> for #ident #ty_generics #where_clause {
+        #impl_push_prql
+
+        impl #impl_generics_with_lifetime ::sqlx::FromRow<'__sqlx__FromRow, ::sqlx::postgres::PgRow> for #ident #ty_generics #where_clause {
             fn from_row(row: &'__sqlx__FromRow ::sqlx::postgres::PgRow) -> ::sqlx::Result<Self> {
                 use ::sqlx::Row;
 
@@ -209,16 +220,16 @@ pub fn expand_derive_json_row(mut ast: DeriveInput) -> TokenStream {
         }
 
         impl #impl_generics_with_sqlx_lifetime ::sqlx::Encode<'__sqlx__EncodeDecode, ::sqlx::Postgres> for #ident #ty_generics #where_clause {
-            fn encode_by_ref(&self, buf: &mut <::sqlx::Postgres as ::sqlx::database::HasArguments<'__sqlx__EncodeDecode>>::ArgumentBuffer) -> ::sqlx::encode::IsNull {
-                ::serde_json::to_value(self)
+            fn encode_by_ref(&self, buf: &mut <::sqlx::Postgres as ::sqlx::Database>::ArgumentBuffer<'__sqlx__EncodeDecode>) -> Result<::sqlx::encode::IsNull, ::sqlx::error::BoxDynError> {
+                Ok(::serde_json::to_value(self)
                     .expect("must serialize json")
-                    .encode_by_ref(buf)
+                    .encode_by_ref(buf)?)
             }
         }
 
         impl #impl_generics_with_sqlx_lifetime ::sqlx::Decode<'__sqlx__EncodeDecode, ::sqlx::Postgres> for #ident #ty_generics #where_clause {
             fn decode(
-                value: <::sqlx::Postgres as ::sqlx::database::HasValueRef<'__sqlx__EncodeDecode>>::ValueRef,
+                value: <::sqlx::Postgres as ::sqlx::Database>::ValueRef<'__sqlx__EncodeDecode>,
             ) -> ::std::result::Result<Self, ::sqlx::error::BoxDynError> {
                 Ok(::serde_json::from_value(::sqlx::types::JsonValue::decode(
                     value,

@@ -54,6 +54,7 @@ pub struct Account {
     #[lsor(skip_filter)]
     pub tiers: Vec<String>,
 
+    #[lsor(json)]
     pub config: AccountConfig,
 
     #[lsor(flatten)]
@@ -74,6 +75,7 @@ pub struct JsonAccount {
     #[lsor(skip_filter)]
     pub tiers: Vec<String>,
 
+    #[lsor(json)]
     pub config: AccountConfig,
 
     #[lsor(skip_sort)]
@@ -154,7 +156,7 @@ fn test_json_filter() {
 
     let mut driver = Driver::new();
     JsonAccountFilter::Tier(AccountTierFilter::Eq(AccountTier::Free))
-        .push_to_driver(&lsor::col("account"), &mut driver);
+        .push_to_driver(&lsor::column::col("account"), &mut driver);
     assert_eq!(driver.prql(), "s\"account->'tier'\" == $1");
 }
 
@@ -215,8 +217,8 @@ fn test_upsert() {
         },
     };
 
-    // Use a reference since the Table trait is implemented for &T
-    upsert(&account).push_to_driver(&mut driver);
+    // Pass the account directly since the Row derive macro implements Table for the struct
+    upsert(account).push_to_driver(&mut driver);
     assert_eq!(
             driver.prql(),
             "INSERT INTO accounts (id, tier, tiers, config, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO UPDATE SET (tier, tiers, config, created_at, updated_at, deleted_at) = ($2, $3, $4, $5, $6, $7)"

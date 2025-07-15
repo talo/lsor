@@ -3,7 +3,6 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-
 pub trait Cache {
     fn get(&self, key: &str) -> Option<String>;
     fn insert(&self, key: String, value: String);

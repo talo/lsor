@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use proc_macro2::{Span, TokenTree};
+use proc_macro2::Span;
 use quote::quote;
 use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Ident};
 
@@ -163,7 +163,7 @@ fn expand_derive_filter_for_struct(
                             let n = all.len();
                             for (i, x) in all.iter().enumerate() {
                                 driver.push('(');
-                                x.push_to_driver(driver);
+                                x.push_to_driver(dummy_lhs, driver);
                                 if i < n - 1 {
                                     driver.push(") && ");
                                 } else {
@@ -175,7 +175,7 @@ fn expand_derive_filter_for_struct(
                             let n = any.len();
                             for (i, x) in any.iter().enumerate() {
                                 driver.push('(');
-                                x.push_to_driver(driver);
+                                x.push_to_driver(dummy_lhs, driver);
                                 if i < n - 1 {
                                     driver.push(") || ");
                                 } else {
@@ -356,6 +356,28 @@ fn expand_derive_json_filter_for_struct(
         }
     });
 
+    let field_variants_with_table_impl = fields.named.iter().filter_map(|field| {
+        let skip = util::has_skip_filter_attr(&field.attrs);
+        if skip {
+            return None;
+        }
+
+        let field_ident = field.ident.as_ref().unwrap();
+        let field_ident_camel_case = Ident::new(
+            &util::snake_case_to_camel_case(field_ident.to_string().as_str()),
+            Span::call_site(),
+        );
+
+        let flat = util::has_flatten_attr(&field.attrs);
+        if flat {
+            panic!("cannot use the #[lsor(flatten)] attribute with the #[lsor(json)] attribute")
+        } else {
+            Some(quote! { #filter_ident::#field_ident_camel_case(filter) => {
+                filter.push_to_driver_as_json(&::lsor::column::json(tn).get(stringify!(#field_ident)), driver);
+            }})
+        }
+    });
+
     let field_variants_as_json_impl = fields.named.iter().filter_map(|field| {
         let skip = util::has_skip_filter_attr(&field.attrs);
         if skip {
@@ -404,6 +426,12 @@ fn expand_derive_json_filter_for_struct(
         #push_to_drive_impl
 
         impl #filter_ident {
+            pub fn push_to_driver_with_table_name(&self, tn: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
+                match &self {
+                    #(#field_variants_with_table_impl)*
+                }
+            }
+
             pub fn push_to_driver(&self, lhs: &dyn ::lsor::driver::PushPrql, driver: &mut ::lsor::driver::Driver) {
                 match &self {
                     #(#field_variants_impl)*

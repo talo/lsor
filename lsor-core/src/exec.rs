@@ -24,7 +24,11 @@ where
     Ok(())
 }
 
-pub async fn load_one<'c, E, F, R>(mut driver: Driver, executor: E, filter: F) -> sqlx::Result<Option<R>>
+pub async fn load_one<'c, E, F, R>(
+    mut driver: Driver,
+    executor: E,
+    filter: F,
+) -> sqlx::Result<Option<R>>
 where
     E: Executor<'c, Database = Postgres>,
     F: PushPrql,
