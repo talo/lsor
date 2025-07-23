@@ -38,6 +38,8 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
         let flat = util::has_flatten_attr(&field.attrs);
         if flat {
             quote! { #field_ident: <_>::from_row(row)?, }
+        } else if json && util::is_option_type(&field.ty) {
+            quote! { #field_ident: row.try_get::<Option<::sqlx::types::Json<_>>, _>(stringify!(#field_ident))?.map(|x| x.0), }
         } else if json {
             quote! { #field_ident: row.try_get::<::sqlx::types::Json<_>, _>(stringify!(#field_ident))?.0, }
             // quote! { #field_ident: row.try_get(stringify!(#field_ident))?, }

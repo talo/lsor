@@ -1,5 +1,5 @@
 use proc_macro2::{Span, TokenTree};
-use syn::{Attribute, Ident};
+use syn::{Attribute, Ident, Type};
 
 pub(crate) fn concat_idents(ident1: &Ident, ident2: &Ident) -> Ident {
     let combined = format!("{}{}", ident1, ident2);
@@ -136,6 +136,17 @@ pub(crate) fn has_skip_sort_attr(attrs: &[Attribute]) -> bool {
 
 pub(crate) fn has_json_attr(attrs: &[Attribute]) -> bool {
     has_any_attr(&["json"], attrs)
+}
+
+pub(crate) fn is_option_type(field_ty: &Type) -> bool {
+    if let Type::Path(type_path) = field_ty {
+        if type_path.path.segments.len() == 1 {
+            if let Some(seg) = type_path.path.segments.first() {
+                return seg.ident.to_string() == "Option";
+            }
+        }
+    }
+    false
 }
 
 fn has_any_attr(options: &[&str], attrs: &[Attribute]) -> bool {
