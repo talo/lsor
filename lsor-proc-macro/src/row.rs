@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-    parse_quote, Data, DeriveInput, Fields, GenericParam, Lifetime, LifetimeDef, WherePredicate,
+    parse_quote, Data, DeriveInput, Fields, GenericParam, Lifetime, LifetimeParam, WherePredicate,
 };
 
 use crate::util;
@@ -132,7 +132,7 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
     let lifetime = Lifetime::new("'__sqlx__FromRow", Span::call_site());
     generics
         .params
-        .insert(0, GenericParam::Lifetime(LifetimeDef::new(lifetime)));
+        .insert(0, GenericParam::Lifetime(LifetimeParam::new(lifetime)));
 
     // re-capture the impl_generics
     let (impl_generics, _ty_generics, _where_clause) = generics.split_for_impl();
@@ -190,7 +190,7 @@ pub fn expand_derive_json_row(mut ast: DeriveInput) -> TokenStream {
     let lifetime = Lifetime::new("'__sqlx__EncodeDecode", Span::call_site());
     generics
         .params
-        .insert(0, GenericParam::Lifetime(LifetimeDef::new(lifetime)));
+        .insert(0, GenericParam::Lifetime(LifetimeParam::new(lifetime)));
 
     // re-capture the impl_generics
     let (impl_generics_with_sqlx_lifetime, _ty_generics, _where_clause) = generics.split_for_impl();
@@ -209,7 +209,10 @@ pub fn expand_derive_json_row(mut ast: DeriveInput) -> TokenStream {
         }
 
         impl #impl_generics_with_sqlx_lifetime ::sqlx::Encode<'__sqlx__EncodeDecode, ::sqlx::Postgres> for #ident #ty_generics #where_clause {
-            fn encode_by_ref(&self, buf: &mut <::sqlx::Postgres as ::sqlx::database::HasArguments<'__sqlx__EncodeDecode>>::ArgumentBuffer) -> ::sqlx::encode::IsNull {
+            fn encode_by_ref(
+                &self,
+                buf: &mut <::sqlx::Postgres as ::sqlx::database::Database>::ArgumentBuffer<'__sqlx__EncodeDecode>,
+            ) -> ::std::result::Result<::sqlx::encode::IsNull, ::sqlx::error::BoxDynError> {
                 ::serde_json::to_value(self)
                     .expect("must serialize json")
                     .encode_by_ref(buf)
@@ -218,17 +221,11 @@ pub fn expand_derive_json_row(mut ast: DeriveInput) -> TokenStream {
 
         impl #impl_generics_with_sqlx_lifetime ::sqlx::Decode<'__sqlx__EncodeDecode, ::sqlx::Postgres> for #ident #ty_generics #where_clause {
             fn decode(
-                value: <::sqlx::Postgres as ::sqlx::database::HasValueRef<'__sqlx__EncodeDecode>>::ValueRef,
+                value: <::sqlx::Postgres as ::sqlx::database::Database>::ValueRef<'__sqlx__EncodeDecode>,
             ) -> ::std::result::Result<Self, ::sqlx::error::BoxDynError> {
                 Ok(::serde_json::from_value(::sqlx::types::JsonValue::decode(
                     value,
                 )?)?)
-            }
-        }
-
-        impl #impl_generics_with_sqlx_lifetime ::sqlx::postgres::PgHasArrayType for #ident #ty_generics #where_clause {
-            fn array_type_info() -> ::sqlx::postgres::PgTypeInfo {
-                ::sqlx::types::JsonValue::array_type_info()
             }
         }
     };

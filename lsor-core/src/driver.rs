@@ -82,7 +82,9 @@ impl Driver {
     {
         use sqlx::Arguments as _;
 
-        self.arguments.add(value);
+        self.arguments
+            .add(value)
+            .expect("must encode value");
         self.arguments
             .format_placeholder(&mut self.prql)
             .expect("must format placeholder");
