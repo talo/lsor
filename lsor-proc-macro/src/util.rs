@@ -1,6 +1,12 @@
 use proc_macro2::{Span, TokenTree};
 use syn::{Attribute, Ident, Meta};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum JsonEncoding {
+    NullIsJson,
+    NullIsSql,
+}
+
 pub(crate) fn concat_idents(ident1: &Ident, ident2: &Ident) -> Ident {
     let combined = format!("{}{}", ident1, ident2);
     Ident::new(&combined, Span::call_site())
@@ -127,6 +133,21 @@ pub(crate) fn has_skip_sort_attr(attrs: &[Attribute]) -> bool {
 
 pub(crate) fn has_json_attr(attrs: &[Attribute]) -> bool {
     has_any_attr(&["json"], attrs)
+}
+
+pub(crate) fn get_json_encoding(attrs: &[Attribute]) -> Option<JsonEncoding> {
+    if has_any_attr(&["json"], attrs) {
+        let null_is_json = has_any_attr(&["null_is_json"], attrs);
+        let null_is_sql = has_any_attr(&["null_is_sql"], attrs);
+        match (null_is_json, null_is_sql) {
+            (true, true) => panic!("Can only specify one of null_is_json or null_is_sql"),
+            (true, false) => Some(JsonEncoding::NullIsJson),
+            (false, true) => Some(JsonEncoding::NullIsSql),
+            (false, false) => panic!("Must specify specify either null_is_json or null_is_sql"),
+        }
+    } else {
+        None
+    }
 }
 
 fn has_any_attr(options: &[&str], attrs: &[Attribute]) -> bool {
