@@ -1,5 +1,5 @@
 use proc_macro2::{Span, TokenTree};
-use syn::{Attribute, Ident};
+use syn::{Attribute, Ident, Meta};
 
 pub(crate) fn concat_idents(ident1: &Ident, ident2: &Ident) -> Ident {
     let combined = format!("{}{}", ident1, ident2);
@@ -17,46 +17,43 @@ pub(crate) fn snake_case_to_camel_case(s: &str) -> String {
         .collect()
 }
 
-pub(crate) fn camel_case_to_snake_case(s: &str) -> String {
-    let mut snake_case = String::new();
-    let mut prev_char_is_uppercase = false;
-
-    for (i, c) in s.chars().enumerate() {
-        if c.is_uppercase() {
-            // If it's not the first character and the previous character is not uppercase,
-            // add an underscore before the current character.
-            if i > 0 && !prev_char_is_uppercase {
-                snake_case.push('_');
+fn collect_tokens(token_tree: &TokenTree, out: &mut Vec<TokenTree>) {
+    match token_tree {
+        TokenTree::Group(group) => {
+            for tt in group.stream().into_iter() {
+                collect_tokens(&tt, out);
             }
-            // Add the lowercase version of the character.
-            snake_case.push(c.to_ascii_lowercase());
-            prev_char_is_uppercase = true;
-        } else {
-            // Add the character as is.
-            snake_case.push(c);
-            prev_char_is_uppercase = false;
+        }
+        _ => {
+            out.push(token_tree.clone());
         }
     }
+}
 
-    snake_case
+fn attr_tokens(attr: &Attribute) -> Vec<TokenTree> {
+    match &attr.meta {
+        Meta::List(meta_list) => {
+            let mut tokens: Vec<TokenTree> = Vec::new();
+            for tt in meta_list.tokens.clone().into_iter() {
+                collect_tokens(&tt, &mut tokens);
+            }
+            tokens
+        }
+        _ => {
+            vec![]
+        }
+    }
 }
 
 pub(crate) fn collect_table_attr(attrs: &[Attribute]) -> Option<String> {
     for attr in attrs {
-        if !attr.path.is_ident("lsor") {
+        if !attr.path().is_ident("lsor") {
             // ignore non-lsor attributes
             continue;
         }
 
-        let mut token_iter = attr
-            .tokens
-            .clone()
-            .into_iter()
-            .filter_map(|token_tree| match token_tree {
-                TokenTree::Group(group) => Some(group.stream().into_iter()),
-                _ => None,
-            })
-            .flatten();
+        let tokens = attr_tokens(attr);
+        let mut token_iter = tokens.iter();
 
         while let Some(t) = token_iter.next() {
             if t.to_string() != "table" {
@@ -83,20 +80,14 @@ pub(crate) fn collect_table_attr(attrs: &[Attribute]) -> Option<String> {
 
 pub(crate) fn collect_filter_attrs(attrs: &[Attribute]) -> Vec<String> {
     for attr in attrs {
-        if !attr.path.is_ident("lsor") {
+        if !attr.path().is_ident("lsor") {
             // ignore non-lsor attributes
             continue;
         }
 
-        return attr
-            .tokens
-            .clone()
-            .into_iter()
-            .filter_map(|token_tree| match token_tree {
-                TokenTree::Group(group) => Some(group.stream().into_iter()),
-                _ => None,
-            })
-            .flatten()
+        let tokens = attr_tokens(attr);
+        return tokens
+            .iter()
             .filter_map(|t| {
                 let s = t.to_string();
                 match s.as_str() {
@@ -140,25 +131,16 @@ pub(crate) fn has_json_attr(attrs: &[Attribute]) -> bool {
 
 fn has_any_attr(options: &[&str], attrs: &[Attribute]) -> bool {
     for attr in attrs {
-        if !attr.path.is_ident("lsor") {
+        if !attr.path().is_ident("lsor") {
             // ignore non-lsor attributes
             continue;
         }
         // find any skip or skip_sort attributes
-        if attr
-            .tokens
-            .clone()
-            .into_iter()
-            .filter_map(|token_tree| match token_tree {
-                TokenTree::Group(group) => Some(group.stream().into_iter()),
-                _ => None,
-            })
-            .flatten()
-            .any(|t| {
-                let s = t.to_string();
-                options.iter().any(|o| &s == o)
-            })
-        {
+        let tokens = attr_tokens(attr);
+        if tokens.iter().any(|t| {
+            let s = t.to_string();
+            options.iter().any(|o| &s == o)
+        }) {
             return true;
         }
     }
