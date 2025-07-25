@@ -6,6 +6,7 @@ use syn::{
 };
 
 use crate::util;
+use crate::util::JsonEncoding;
 
 pub fn expand_derive_row(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).unwrap();
@@ -33,16 +34,26 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
             return quote! { #field_ident: ::std::default::Default::default(), };
         }
 
-        let json = util::has_json_attr(&field.attrs);
-
+        let json = util::get_json_encoding(&field.attrs);
         let flat = util::has_flatten_attr(&field.attrs);
-        if flat {
-            quote! { #field_ident: <_>::from_row(row)?, }
-        } else if json {
-            quote! { #field_ident: row.try_get::<::sqlx::types::Json<_>, _>(stringify!(#field_ident))?.0, }
-            // quote! { #field_ident: row.try_get(stringify!(#field_ident))?, }
-        } else {
-            quote! { #field_ident: row.try_get(stringify!(#field_ident))?, }
+
+        if json.is_some() && flat {
+            panic!("json and flat cannot be used together");
+        }
+
+        match json {
+            Some(JsonEncoding::NullIsJson) => {
+                quote! { #field_ident: row.try_get::<::lsor::NullIsJson<_>, _>(stringify!(#field_ident))?.0, }
+            }
+            Some(JsonEncoding::NullIsSql) => {
+                quote! { #field_ident: row.try_get::<::lsor::NullIsSql<_>, _>(stringify!(#field_ident))?.0, }
+            }
+            _ if flat => {
+                quote! { #field_ident: <_>::from_row(row)?, }
+            }
+            _ => {
+                quote! { #field_ident: row.try_get(stringify!(#field_ident))?, }
+            }
         }
     });
 
@@ -83,15 +94,24 @@ pub fn expand_derive_row(input: TokenStream) -> TokenStream {
 
             let field_ident = field.ident.as_ref().unwrap();
 
-            let json = util::has_json_attr(&field.attrs);
+            let json = util::get_json_encoding(&field.attrs);
+            let flat = util::has_flatten_attr(&field.attrs);
 
-            if json {
-                quote! { driver.push_bind(::sqlx::types::Json(&self.#field_ident)); #postfix }
-            } else {
-                let flat = util::has_flatten_attr(&field.attrs);
-                if flat {
+            if json.is_some() && flat {
+                panic!("json and flat cannot be used together");
+            }
+
+            match json {
+                Some(JsonEncoding::NullIsJson) => {
+                    quote! { driver.push_bind(::lsor::NullIsJson(&self.#field_ident)); #postfix }
+                }
+                Some(JsonEncoding::NullIsSql) => {
+                    quote! { driver.push_bind(::lsor::NullIsSql(&self.#field_ident)); #postfix }
+                }
+                _ if flat => {
                     quote! { self.#field_ident.push_column_values(driver); #postfix }
-                } else {
+                }
+                _ => {
                     quote! { self.#field_ident.push_to_driver(driver); #postfix }
                 }
             }
